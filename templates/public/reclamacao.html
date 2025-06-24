@@ -1,0 +1,135 @@
+{% extends "public/index.html" %}
+{% block title %}Fazer Reclamação - Sistema Confidencia{% endblock %}
+
+{% block content %}
+<div class="pagetitle">
+  <h1>Fazer Reclamação</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Início</a></li>
+      <li class="breadcrumb-item active">Reclamação</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section">
+  <form method="post" action="/reclamacao" enctype="multipart/form-data" class="row g-3">
+
+    <div class="col-md-6">
+      <label for="nome" class="form-label">Nome (opcional)</label>
+      <input type="text" id="nome" name="nome" class="form-control">
+    </div>
+
+    <div class="col-md-6">
+      <label for="contacto" class="form-label">Contacto (email ou telefone, opcional)</label>
+      <input type="text" id="contacto" name="contacto" class="form-control">
+    </div>
+
+    <div class="col-12">
+      <label for="tipo_reclamacao" class="form-label">Tipo de Reclamação</label>
+      <select id="tipo_reclamacao" name="tipo_reclamacao" class="form-select" required>
+        <option value="" selected disabled>Escolha o tipo de reclamação</option>
+        
+        <optgroup label="1. Questões de Contratação e Integração">
+          <option value="recrutamento_injusto">Processo de recrutamento injusto</option>
+          <option value="integracao_dificuldades">Problemas com integração</option>
+          <option value="erros_contratos">Erros em ofertas ou contratos</option>
+        </optgroup>
+
+        <optgroup label="2. Condições de Trabalho">
+          <option value="ambiente_inadequado">Ambiente físico inadequado</option>
+          <option value="infraestrutura_deficiente">Problemas com infraestrutura</option>
+        </optgroup>
+
+        <optgroup label="3. Gestão de Desempenho">
+          <option value="avaliacao_injusta">Avaliações injustas</option>
+          <option value="falta_feedback">Falta de feedback</option>
+          <option value="metas_mal_definidas">Problemas com metas</option>
+        </optgroup>
+
+        <optgroup label="4. Políticas e Procedimentos">
+          <option value="politicas_pouco_claras">Políticas pouco claras</option>
+          <option value="politicas_inconsistentes">Aplicação inconsistente</option>
+          <option value="mudancas_sem_aviso">Mudanças sem comunicação</option>
+        </optgroup>
+
+        <optgroup label="5. Relações Interpessoais">
+          <option value="conflitos_funcionarios">Conflitos entre funcionários</option>
+          <option value="bullying_trabalho">Bullying no trabalho</option>
+        </optgroup>
+
+        <optgroup label="6. Compensação e Benefícios">
+          <option value="salario">Discrepâncias salariais</option>
+          <option value="beneficios">Problemas com benefícios</option>
+          <option value="bonus">Questões sobre bônus</option>
+        </optgroup>
+
+        <optgroup label="7. Treinamento e Desenvolvimento">
+          <option value="falta_oportunidades">Falta de desenvolvimento</option>
+          <option value="qualidade_treinamento">Treinamento de baixa qualidade</option>
+          <option value="acesso_limitado">Acesso limitado a recursos</option>
+        </optgroup>
+
+        <optgroup label="8. Horários e Equilíbrio">
+          <option value="horarios_trabalho">Horários e turnos</option>
+          <option value="vida_pessoal_trabalho">Equilíbrio vida/trabalho</option>
+          <option value="licencas_ferias">Licenças e férias</option>
+        </optgroup>
+
+        <optgroup label="9. Comunicação Interna">
+          <option value="falta_comunicacao">Falta de comunicação</option>
+          <option value="informacao_dificil_acesso">Acesso difícil a informação</option>
+          <option value="disseminacao_fraca">Má comunicação interna</option>
+        </optgroup>
+
+        <optgroup label="10. Procedimentos Disciplinares">
+          <option value="medidas_inadequadas">Medidas inadequadas</option>
+          <option value="regras_confusas">Regras pouco claras</option>
+          <option value="processo_injusto">Processos injustos</option>
+        </optgroup>
+
+        <optgroup label="11. Saúde e Segurança (HSEQ)">
+          <option value="seguranca">Segurança no trabalho</option>
+          <option value="nao_conformidade_normas">Não cumprimento de normas</option>
+          <option value="bem_estar">Bem-estar dos funcionários</option>
+        </optgroup>
+
+        <optgroup label="12. Outros">
+          <option value="outros">Outros / Sugestões</option>
+        </optgroup>
+
+      </select>
+    </div>
+<div class="col-md-6">
+  <label for="delegacao" class="form-label">Delegação de Destino</label>
+  <select id="delegacao" name="delegacao" class="form-select" required>
+    <option value="" selected disabled>Escolha a delegação</option>
+    <option value="sede">Sede</option>
+    <option value="txumene">Txumene</option>
+    <option value="beira">Beira</option>
+    <option value="tete">Tete</option>
+    <option value="nacala">Nacala</option>
+  </select>
+</div>
+
+    <div class="col-md-6">
+      <label for="data_ocorrencia" class="form-label">Data da Ocorrência</label>
+      <input type="date" id="data_ocorrencia" name="data_ocorrencia" class="form-control" value="{{ current_date }}" required>
+    </div>
+
+    <div class="col-12">
+      <label for="descricao" class="form-label">Descrição da Reclamação</label>
+      <textarea id="descricao" name="descricao" class="form-control" rows="5" required></textarea>
+    </div>
+
+    <div class="col-12">
+      <label for="anexos" class="form-label">Anexar Documentos (opcional)</label>
+      <input class="form-control" type="file" id="anexos" name="anexos" multiple>
+    </div>
+
+    <div class="col-12">
+      <button type="submit" class="btn btn-primary">Submeter Reclamação</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

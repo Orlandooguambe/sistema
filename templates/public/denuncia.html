@@ -1,0 +1,65 @@
+{% extends "public/index.html" %}
+
+{% block title %}Fazer Denúncia - Sistema Confidencia{% endblock %}
+
+{% block content %}
+<div class="pagetitle">
+  <h1>Fazer Denúncia</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Início</a></li>
+      <li class="breadcrumb-item active">Denúncia</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section">
+  <form method="post" action="/denuncia" enctype="multipart/form-data" class="row g-3">
+    <div class="col-md-6">
+      <label for="tipo_denuncia" class="form-label">Tipo de Denúncia</label>
+      <select id="tipo_denuncia" name="tipo_denuncia" class="form-select" required>
+       <option value="" selected disabled>Escolha...</option>
+        <option value="corrupcao">Corrupção</option>
+        <option value="fraude">Fraude</option>
+        <option value="uso_abusivo">Uso abusivo de recursos da empresa</option>
+        <option value="quebra_sigilo">Quebra de sigilo profissional</option>
+        <option value="assedio">Assédio moral ou sexual</option>
+        <option value="racismo">Racismo</option>
+        <option value="discriminacao">Discriminação</option>
+        <option value="outros">Outros</option>
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label for="delegacao" class="form-label">Delegação de Destino</label>
+      <select id="delegacao" name="delegacao" class="form-select" required>
+        <option value="" selected disabled>Escolha a delegação</option>
+        <option value="sede">Sede</option>
+        <option value="txumene">Txumene</option>
+        <option value="beira">Beira</option>
+        <option value="tete">Tete</option>
+        <option value="nacala">Nacala</option>
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label for="data_ocorrencia" class="form-label">Data da Ocorrência</label>
+      <input type="date" id="data_ocorrencia" name="data_ocorrencia" class="form-control" value="{{ current_date }}" required>
+    </div>
+
+    <div class="col-12">
+      <label for="descricao" class="form-label">Descrição da Denúncia</label>
+      <textarea id="descricao" name="descricao" class="form-control" rows="5" required></textarea>
+    </div>
+
+    <div class="col-12">
+      <label for="anexos" class="form-label">Anexar Documentos (opcional)</label>
+      <input class="form-control" type="file" id="anexos" name="anexos" multiple>
+    </div>
+
+    <div class="col-12">
+      <button type="submit" class="btn btn-primary">Submeter Denúncia</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
