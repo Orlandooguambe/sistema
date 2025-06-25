@@ -1281,3 +1281,24 @@ h6 {
   padding: 10px 20px;
   border-top: 1px solid #ddd;
 }
+/* Garantir que o menu funciona no mobile */
+body.toggle-sidebar .sidebar {
+  left: 0 !important;
+}
+
+/* Sidebar deve começar oculta no mobile */
+@media (max-width: 1199px) {
+  .sidebar {
+    left: -300px !important;
+    transition: left 0.3s ease-in-out;
+  }
+
+  body.toggle-sidebar .sidebar {
+    left: 0 !important;
+  }
+
+  .toggle-sidebar #main,
+  .toggle-sidebar #footer {
+    margin-left: 0 !important;
+  }
+}
