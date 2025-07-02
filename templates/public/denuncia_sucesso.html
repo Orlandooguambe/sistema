@@ -1,8 +1,20 @@
 {% extends "public/index.html" %}
 
-{% block title %}Denúncia Submetida{% endblock %}
+{% block title %}{% endblock %}
 
 {% block content %}
+<div class="pagetitle">
+  <h1>Reclamação Submetida</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Início</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('reclamacao') }}">Fazer Reclamação</a></li>
+      <li class="breadcrumb-item active">Confirmação</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section">
 <div class="alert alert-success text-center p-5" role="alert">
   <h2 class="mb-4">✅ Denúncia Submetida com Sucesso!</h2>
   <h4><strong>O seu código de acompanhamento é:</strong></h4>
@@ -11,6 +23,6 @@
   <p>É recomendável tirar um screenshot para manter o registo.</p>
   <hr>
   <p><strong>Prazo estimado para resposta:</strong> {{ prazo }}</p>
-  <a href="/" class="btn btn-primary mt-4">Voltar ao Início</a>
 </div>
+</section>
 {% endblock %}
