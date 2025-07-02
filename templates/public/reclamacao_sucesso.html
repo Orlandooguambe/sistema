@@ -1,0 +1,13 @@
+{% extends "public/index.html" %}
+{% block title %}Reclamação Submetida{% endblock %}
+{% block content %}
+<div class="alert alert-success text-center p-5">
+  <h2 class="mb-4">🎉 Reclamação Submetida com Sucesso!</h2>
+  <h4><strong>Código de Acompanhamento:</strong></h4>
+  <h1 class="display-4 text-primary">{{ codigo }}</h1>
+  <p class="mt-4">Este código é único. <strong>Guarde com segurança</strong>, não partilhe com ninguém.</p>
+  <p>Recomendamos fazer uma captura de ecrã.</p>
+  <p class="mt-3"><strong>Resposta até:</strong> {{ prazo }}</p>
+  <a href="/" class="btn btn-outline-primary mt-4">Voltar ao Início</a>
+</div>
+{% endblock %}

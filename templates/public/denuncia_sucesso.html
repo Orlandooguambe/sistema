@@ -1,0 +1,16 @@
+{% extends "public/index.html" %}
+
+{% block title %}Denúncia Submetida{% endblock %}
+
+{% block content %}
+<div class="alert alert-success text-center p-5" role="alert">
+  <h2 class="mb-4">✅ Denúncia Submetida com Sucesso!</h2>
+  <h4><strong>O seu código de acompanhamento é:</strong></h4>
+  <h1 class="display-4 text-primary fw-bold my-3">{{ codigo }}</h1>
+  <p class="text-danger"><strong>⚠️ Guarde este código em segurança. Não o partilhe com ninguém.</strong></p>
+  <p>É recomendável tirar um screenshot para manter o registo.</p>
+  <hr>
+  <p><strong>Prazo estimado para resposta:</strong> {{ prazo }}</p>
+  <a href="/" class="btn btn-primary mt-4">Voltar ao Início</a>
+</div>
+{% endblock %}
