@@ -256,7 +256,7 @@ def painel():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    return render_template("admin/index.html")
+    return render_template("admin/Index.html")
 
 
 
