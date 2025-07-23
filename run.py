@@ -255,9 +255,10 @@ def logout():
 def painel():
     if "user_id" not in session:
         return redirect(url_for("login"))
-    
-    ano = datetime.now().year
-    return render_template("admin/index.html", ano=ano)
+
+    return render_template("admin/index.html")
+
+
 
 @app.route("/admin/denuncias")
 def ver_denuncias():
