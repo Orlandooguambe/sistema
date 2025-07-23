@@ -1302,3 +1302,7 @@ body.toggle-sidebar .sidebar {
     margin-left: 0 !important;
   }
 }
+.fade {
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
+}

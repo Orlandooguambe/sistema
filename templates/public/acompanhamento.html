@@ -2,6 +2,93 @@
 {% block title %}Acompanhamento - Sistema Confidencia{% endblock %}
 
 {% block content %}
+<style>
+/* Chat container */
+.chat-container {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  max-height: 500px;
+  overflow-y: auto;
+  padding: 15px;
+  background-color: #f8f9fa;
+}
+
+/* Mensagem base */
+.chat-message {
+  display: flex;
+  flex-direction: column;
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  position: relative;
+  word-wrap: break-word;
+  line-height: 1.4;
+  font-size: 0.95rem;
+}
+
+/* Mensagem do admin */
+.chat-message.admin {
+  align-self: flex-start;
+  background-color: #e9ecef;
+  color: #212529;
+  border-top-left-radius: 0;
+}
+
+/* Mensagem do cidadão */
+.chat-message.cidadao {
+  align-self: flex-end;
+  background-color: #198754;
+  color: white;
+  border-top-right-radius: 0;
+}
+
+/* Meta (nome + data) */
+.chat-meta {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+
+/* Campo de envio */
+.chat-input {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chat-input textarea {
+  flex: 1;
+  resize: none;
+  border-radius: 6px;
+  min-height: 50px;
+}
+
+.chat-input button {
+  white-space: nowrap;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .chat-message {
+    max-width: 100%;
+    font-size: 0.9rem;
+  }
+
+  .chat-input {
+    flex-direction: column;
+  }
+
+  .chat-input button {
+    width: 100%;
+  }
+}
+</style>
+
+
 <div class="pagetitle">
   <h1>Acompanhamento</h1>
   <nav>
@@ -25,35 +112,34 @@
 </section>
 
 {% if resultado %}
-<section class="section mt-4">
-  <h5>Estado do Caso</h5>
-  <p><strong>Situação:</strong> {{ resultado.estado }}</p>
-
-  <h6 class="mt-3">Histórico:</h6>
-  <ul class="list-group mb-3">
-    {% for mensagem in resultado.historico %}
-    <li class="list-group-item">
-      <strong>{{ mensagem.data }}:</strong> {{ mensagem.texto }}
-    </li>
-    {% endfor %}
-  </ul>
-
-  <form method="post" action="/responder" class="row g-3">
-    <input type="hidden" name="codigo" value="{{ resultado.codigo }}">
-    <div class="col-12">
-      <label for="mensagem" class="form-label">Nova Mensagem (opcional)</label>
-      <textarea id="mensagem" name="mensagem" class="form-control" rows="3"></textarea>
+<h5 class="mt-4">Mensagens</h5>
+<div class="chat-container mb-3">
+  {% for msg in mensagens %}
+    <div class="chat-message {{ msg.remetente }}">
+      <div class="chat-meta">
+        <strong>{% if msg.remetente == 'admin' %}Admin{% else %}Você{% endif %}</strong> — {{ msg.data_envio }}
+      </div>
+      <div>{{ msg.conteudo }}</div>
     </div>
-    <div class="col-12">
-      <button type="submit" class="btn btn-success">Enviar Mensagem</button>
+  {% endfor %}
+</div>
+
+<!-- Campo de envio -->
+<form method="post" action="/responder" class="chat-input">
+  <input type="hidden" name="codigo" value="{{ resultado.codigo_acomp }}">
+  <textarea name="mensagem" class="form-control" rows="2" required placeholder="Escreva sua mensagem..."></textarea>
+  <button type="submit" class="btn btn-success"><i class="bi bi-send"></i> Enviar</button>
+</form>
+
     </div>
-  </form>
-</section>
-{% elif tentativa and not resultado %}
-<section class="section mt-4">
-  <div class="alert alert-danger" role="alert">
-    Código não encontrado. Verifique e tente novamente.
   </div>
 </section>
+
+{% elif tentativa %}
+  <section class="section mt-4">
+    <div class="alert alert-danger" role="alert">
+      Código não encontrado. Verifique e tente novamente.
+    </div>
+  </section>
 {% endif %}
 {% endblock %}

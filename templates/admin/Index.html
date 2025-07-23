@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>{% block title %}Sistema Confidencia{% endblock %}</title>
+
+  <link href="{{ url_for('static', filename='assets/img/favicon.png') }}" rel="icon">
+  <link href="{{ url_for('static', filename='assets/img/apple-touch-icon.png') }}" rel="apple-touch-icon">
+
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700|Nunito:300,400,600,700|Poppins:300,400,500,600,700" rel="stylesheet">
+  <link href="{{ url_for('static', filename='assets/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='assets/vendor/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='assets/vendor/boxicons/css/boxicons.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='assets/css/style.css') }}" rel="stylesheet">
+  <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
+</head>
+
+<body>
+
+  <!-- Header -->
+  <header id="header" class="header fixed-top d-flex align-items-center">
+    <div class="d-flex align-items-center justify-content-between">
+      <a href="/" class="logo d-flex align-items-center">
+        <img src="{{ url_for('static', filename='assets/img/logo.png') }}" alt="">
+        <span class="d-none d-lg-block"> Painel Administrativo de Confidencia</span>
+      </a>
+      <i class="bi bi-list toggle-sidebar-btn"></i>
+    </div>
+
+    <nav class="header-nav ms-auto">
+      <ul class="d-flex align-items-center">
+
+        <!-- Notificações -->
+        <li class="nav-item dropdown">
+          <a class="nav-link nav-icon" href="#" data-bs-toggle="dropdown">
+            <i class="bi bi-bell"></i>
+            <span class="badge bg-primary badge-number">4</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow notifications">
+            <li class="dropdown-header">
+              Tens 4 novas notificações
+              <a href="#"><span class="badge rounded-pill bg-primary p-2 ms-2">Ver todas</span></a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <!-- Itens de notificação (exemplo) -->
+            <li class="notification-item">
+              <i class="bi bi-check-circle text-success"></i>
+              <div>
+                <h4>Nova denúncia recebida</h4>
+                <p>Delegação Central</p>
+                <p>há 2 horas</p>
+              </div>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li class="dropdown-footer"><a href="#">Ver todas as notificações</a></li>
+          </ul>
+        </li>
+
+        <!-- Mensagens -->
+        <li class="nav-item dropdown">
+          <a class="nav-link nav-icon" href="#" data-bs-toggle="dropdown">
+            <i class="bi bi-chat-left-text"></i>
+            <span class="badge bg-success badge-number">3</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow messages">
+            <li class="dropdown-header">Tens 3 novas mensagens</li>
+            <li><hr class="dropdown-divider"></li>
+            <!-- Itens de mensagens (exemplo) -->
+            <li class="message-item">
+              <a href="#">
+                <img src="{{ url_for('static', filename='assets/img/messages-1.jpg') }}" alt="" class="rounded-circle">
+                <div>
+                  <h4>Admin Central</h4>
+                  <p>Nova actualização disponível</p>
+                  <p>há 4 horas</p>
+                </div>
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li class="dropdown-footer"><a href="#">Ver todas as mensagens</a></li>
+          </ul>
+        </li>
+
+        <!-- Perfil -->
+        <li class="nav-item dropdown pe-3">
+          <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
+            <img src="{{ url_for('static', filename='assets/img/profile-img.jpg') }}" alt="Profile" class="rounded-circle">
+            <span class="d-none d-md-block dropdown-toggle ps-2">Admin</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
+            <li class="dropdown-header">
+              <h6>Administrador Geral</h6>
+              <span>Sistema</span>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="#">
+                <i class="bi bi-person"></i> <span>Meu Perfil</span>
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center"href="{{ url_for('logout') }}">
+                <i class="bi bi-box-arrow-right"></i> <span>Sair</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Sidebar -->
+  <!-- Sidebar -->
+<aside id="sidebar" class="sidebar">
+  <ul class="sidebar-nav" id="sidebar-nav">
+    
+    <li class="nav-item">
+      <a class="nav-link {% if request.path == '/painel' %}active{% endif %}" href="{{ url_for('painel') }}">
+        <i class="bi bi-grid fs-4"></i><span>Dashboard</span>
+      </a>
+    </li>
+
+    <li class="nav-item">
+      <a class="nav-link {% if request.path.startswith('/admin/denuncias') %}active{% endif %}" href="{{ url_for('ver_denuncias') }}">
+        <i class="bi bi-exclamation-diamond fs-4"></i><span>Ver Denúncias</span>
+      </a>
+    </li>
+
+    <li class="nav-item">
+      <a class="nav-link {% if request.path.startswith('/admin/reclamacoes') %}active{% endif %}" href="#">
+        <i class="bi bi-chat-square-dots fs-4"></i><span>Ver Reclamações</span>
+      </a>
+    </li>
+
+    <li class="nav-item">
+      <a class="nav-link {% if request.path.startswith('/admin/mensagens') %}active{% endif %}" href="#">
+        <i class="bi bi-chat-dots fs-4"></i><span>Mensagens</span>
+      </a>
+    </li>
+
+    <li class="nav-item">
+      <a class="nav-link {% if request.path.startswith('/admin/relatorios') %}active{% endif %}" href="#">
+        <i class="bi bi-bar-chart fs-4"></i><span>Relatórios</span>
+      </a>
+    </li>
+
+    <li class="nav-item">
+      <a class="nav-link {% if request.path.startswith('/admin/definicoes') %}active{% endif %}" href="#">
+        <i class="bi bi-gear fs-4"></i><span>Definições</span>
+      </a>
+    </li>
+    
+  </ul>
+</aside>
+ 
+
+  <!-- Conteúdo -->
+  <main id="main" class="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Rodapé -->
+  <footer id="footer" class="footer">
+    <div class="copyright">
+      &copy; <strong><span>Sistema Confidencia</span></strong> {{ ano }}. Todos os direitos reservados.
+    </div>
+    <div class="credits">
+      Desenvolvido por Eng Orlando Guambe <a href="https://Transportes Lalgy.co.mz/">Transportes Lalgy</a>
+    </div>
+  </footer>
+
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center">
+    <i class="bi bi-arrow-up-short"></i>
+  </a>
+
+  <!-- Scripts -->
+  <script src="{{ url_for('static', filename='assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='assets/js/main.js') }}"></script>
+<!-- jQuery e DataTables -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script>
+  $(document).ready(function () {
+    $('.datatable').DataTable({
+      "pageLength": 5,
+      "lengthMenu": [5, 10, 15, 25, 50, 100],
+      "language": {
+        "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-PT.json"
+      }
+    });
+  });
+</script>
+
+
+</body>
+</html>

@@ -32,30 +32,30 @@
 
   <!-- ======= Sidebar ======= -->
   <aside id="sidebar" class="sidebar">
-    <ul class="sidebar-nav" id="sidebar-nav">
-      <li class="nav-item">
-        <a class="nav-link" href="/">
-          <i class="bi bi-house-door"></i><span>Início</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('denuncia') }}">
-          <i class="bi bi-exclamation-triangle"></i><span>Fazer Denúncia</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('reclamacao') }}">
-          <i class="bi bi-chat-dots"></i><span>Fazer Reclamação</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('acompanhamento') }}">
-          <i class="bi bi-eye"></i><span>Acompanhamento</span>
-        </a>
-      </li>
+  <ul class="sidebar-nav" id="sidebar-nav">
     <li class="nav-item">
-      <a class="nav-link" href="/ajuda">
-        <i class="bi bi-question-circle"></i><span>Ajuda</span>
+      <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
+        <i class="bi bi-house-door fs-4"></i><span>Início</span>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if request.path.startswith('/denuncia') %}active{% endif %}" href="{{ url_for('denuncia') }}">
+        <i class="bi bi-exclamation-triangle fs-4"></i><span>Fazer Denúncia</span>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if request.path.startswith('/reclamacao') %}active{% endif %}" href="{{ url_for('reclamacao') }}">
+        <i class="bi bi-chat-dots fs-4"></i><span>Fazer Reclamação</span>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if request.path.startswith('/acompanhamento') %}active{% endif %}" href="{{ url_for('acompanhamento') }}">
+        <i class="bi bi-eye fs-4"></i><span>Acompanhamento</span>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if request.path.startswith('/ajuda') %}active{% endif %}" href="{{ url_for('ajuda') }}">
+        <i class="bi bi-question-circle fs-4"></i><span>Ajuda</span>
       </a>
     </li>
   </ul>

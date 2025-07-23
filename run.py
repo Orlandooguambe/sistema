@@ -5,11 +5,23 @@ from uuid import uuid4
 from flask import redirect, url_for, session
 import secrets
 from datetime import datetime, timedelta
+from werkzeug.utils import secure_filename
+import json
+import os
+import hashlib
+
 
 app = Flask(__name__)
 DATABASE = "confidencia.db"
 app.secret_key = 'segredo-super-seguro-123'
+# Pasta para uploads
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'docx', 'mp3', 'wav', 'm4a', 'ogg'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+# Função para verificar ficheiros permitidos
+def ficheiro_permitido(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Função para obter conexão à base de dados
 def get_db():
@@ -41,6 +53,12 @@ def adicionar_dias_uteis(data_inicial, dias):
     return data
 
 
+
+@app.context_processor
+def inject_ano():
+    return {'ano': datetime.now().year}
+
+
 @app.route("/denuncia", methods=["GET", "POST"])
 def denuncia():
     if request.method == "POST":
@@ -54,11 +72,24 @@ def denuncia():
         codigo = secrets.token_hex(5).upper()  # Ex: '6E1340FB80'
         hoje = date.today()
         prazo = adicionar_dias_uteis(hoje, 5)
+ # Processar anexos
+        anexos_paths = []
+        if 'anexos' in request.files:
+            for ficheiro in request.files.getlist('anexos'):
+                if ficheiro and ficheiro_permitido(ficheiro.filename):
+                    filename = secure_filename(ficheiro.filename)
+                    caminho = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    ficheiro.save(caminho)
+                    anexos_paths.append(filename)
 
         db.execute("""
-            INSERT INTO denuncias (tipo, delegacao_id, descricao, data_ocorrencia, data_submissao, codigo_acomp, estado, prazo_resposta)
-            VALUES (?, (SELECT id FROM delegacoes WHERE lower(nome)=?), ?, ?, datetime('now'), ?, 'em análise', ?)
-        """, (tipo, delegacao.lower(), descricao, data_ocorrencia, codigo, prazo.isoformat()))
+            INSERT INTO denuncias (tipo, delegacao_id, descricao, anexos, data_ocorrencia, data_submissao, codigo_acomp, estado, prazo_resposta)
+            VALUES (?, (SELECT id FROM delegacoes WHERE lower(nome)=?), ?, ?, ?, datetime('now'), ?, 'pendente', ?)
+
+        """, (
+            tipo, delegacao.lower(), descricao, json.dumps(anexos_paths),
+            data_ocorrencia, codigo, prazo.isoformat()
+        ))
         db.commit()
 
         session['codigo'] = codigo
@@ -86,6 +117,15 @@ def reclamacao():
         codigo = secrets.token_hex(5).upper()
         prazo = adicionar_dias_uteis(datetime.today(), 5).date()
 
+        anexos_paths = []
+        if 'anexos' in request.files:
+            for ficheiro in request.files.getlist('anexos'):
+                if ficheiro and ficheiro_permitido(ficheiro.filename):
+                    filename = secure_filename(ficheiro.filename)
+                    caminho = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    ficheiro.save(caminho)
+                    anexos_paths.append(filename)
+
         db.execute("""
             INSERT INTO reclamacoes (
                 tipo, nome, contacto, descricao, anexos,
@@ -97,7 +137,7 @@ def reclamacao():
             dados.get("nome"),
             dados.get("contacto"),
             dados.get("descricao"),
-            "",  # anexos vazios por enquanto
+            json.dumps(anexos_paths),
             dados.get("data_ocorrencia"),
             codigo,
             dados.get("delegacao"),
@@ -105,7 +145,6 @@ def reclamacao():
         ))
         db.commit()
 
-        # Guarda o código e prazo na sessão para mostrar na página de sucesso
         session["codigo_acomp"] = codigo
         session["prazo_resposta"] = prazo.strftime("%d/%m/%Y")
         return redirect(url_for("reclamacao_sucesso"))
@@ -123,17 +162,25 @@ def reclamacao_sucesso():
 
 @app.route("/acompanhamento", methods=["GET", "POST"])
 def acompanhamento():
+    db = get_db()
+
     if request.method == "POST":
         codigo = request.form.get("codigo")
-        db = get_db()
+        mensagem = request.form.get("mensagem")
 
-        # Tenta buscar primeiro em denúncias
+        if mensagem:
+            db.execute("""
+                INSERT INTO mensagens (codigo_acomp, conteudo, remetente, data_envio)
+                VALUES (?, ?, 'colaborador', datetime('now'))
+            """, (codigo, mensagem))
+            db.commit()
+
+        # Buscar novamente após envio
         denuncia = db.execute("SELECT * FROM denuncias WHERE codigo_acomp = ?", (codigo,)).fetchone()
         if denuncia:
             mensagens = db.execute("SELECT * FROM mensagens WHERE codigo_acomp = ? ORDER BY data_envio ASC", (codigo,)).fetchall()
             return render_template("public/acompanhamento.html", resultado=denuncia, mensagens=mensagens, tipo="denuncia", tentativa=True)
 
-        # Ou tenta buscar em reclamações
         reclamacao = db.execute("SELECT * FROM reclamacoes WHERE codigo_acomp = ?", (codigo,)).fetchone()
         if reclamacao:
             mensagens = db.execute("SELECT * FROM mensagens WHERE codigo_acomp = ? ORDER BY data_envio ASC", (codigo,)).fetchall()
@@ -143,9 +190,159 @@ def acompanhamento():
 
     return render_template("public/acompanhamento.html", resultado=None, tentativa=False)
 
+@app.route("/responder", methods=["POST"])
+def responder():
+    db = get_db()
+    codigo = request.form.get("codigo")
+    conteudo = request.form.get("mensagem")
+
+    if codigo and conteudo:
+        db.execute("""
+            INSERT INTO mensagens (codigo_acomp, conteudo, remetente, data_envio)
+            VALUES (?, ?, 'cidadao', datetime('now'))
+        """, (codigo, conteudo))
+        db.commit()
+
+    return redirect(url_for("acompanhamento"))
+
+
+
 @app.route("/ajuda")
 def ajuda():
     return render_template("public/ajuda.html")
+
+    #Painel Adminstrativo
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    erro = None
+
+    if request.method == "POST":
+        email = request.form.get("email")
+        senha = request.form.get("senha")
+
+        if not email or not senha:
+            erro = "Preencha todos os campos."
+        else:
+            db = get_db()
+            user = db.execute("SELECT * FROM usuarios WHERE email = ?", (email,)).fetchone()
+
+            if user is None:
+                erro = "Este email não está registado."
+            elif not user["ativo"]:
+                erro = "A sua conta está desactivada. Contacte o administrador."
+            else:
+                senha_hash = hashlib.sha256(senha.encode()).hexdigest()
+                if senha_hash != user["senha"]:
+                    erro = "Senha incorrecta."
+                else:
+                    # Login com sucesso
+                    session["user_id"] = user["id"]
+                    session["perfil"] = user["perfil"]
+                    session["nome"] = user["nome"]
+                    session["email"] = user["email"]
+                    return redirect(url_for("painel"))
+
+    return render_template("admin/login.html", erro=erro)
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+@app.route("/painel")
+def painel():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    
+    ano = datetime.now().year
+    return render_template("admin/index.html", ano=ano)
+
+@app.route("/admin/denuncias")
+def ver_denuncias():
+    db = get_db()
+    tipo = request.args.get("tipo")
+    estado = request.args.get("estado")
+    data = request.args.get("data")
+
+    query = "SELECT * FROM denuncias WHERE 1=1"
+    params = []
+
+    if tipo:
+        query += " AND tipo = ?"
+        params.append(tipo)
+
+    # Lógica especial para 'pendente' (estado NULL ou vazio)
+    if estado:
+       query += " AND estado = ?"
+       params.append(estado)
+
+    elif estado:
+        query += " AND estado = ?"
+        params.append(estado)
+
+    if data:
+        query += " AND date(data_submissao) = ?"
+        params.append(data)
+
+    denuncias = db.execute(query + " ORDER BY data_submissao DESC", params).fetchall()
+
+    total = db.execute("SELECT COUNT(*) FROM denuncias").fetchone()[0]
+    pendentes = db.execute("SELECT COUNT(*) FROM denuncias WHERE estado = 'pendente'").fetchone()[0]
+    em_analise = db.execute("SELECT COUNT(*) FROM denuncias WHERE estado = 'em_analise'").fetchone()[0]
+    concluidas = db.execute("SELECT COUNT(*) FROM denuncias WHERE estado = 'concluida'").fetchone()[0]
+    arquivadas = db.execute("SELECT COUNT(*) FROM denuncias WHERE estado = 'arquivada'").fetchone()[0]
+
+    return render_template("admin/ver_denuncias.html",
+                           denuncias=denuncias,
+                           total_denuncias=total,
+                           pendentes=pendentes,
+                           em_analise=em_analise,
+                           concluidas=concluidas,
+                           arquivadas=arquivadas,
+                           tipo=tipo,
+                           estado=estado,
+                           data=data)
+
+
+@app.route("/admin/denuncias/<int:id>", methods=["GET", "POST"])
+def ver_detalhes_denuncia(id):
+    db = get_db()
+    denuncia = db.execute("SELECT * FROM denuncias WHERE id = ?", (id,)).fetchone()
+    if not denuncia:
+        return "Denúncia não encontrada", 404
+
+    # Atualizar estado e/ou enviar resposta
+    if request.method == "POST":
+        novo_estado = request.form.get("novo_estado")
+        resposta = request.form.get("resposta")
+
+        if novo_estado:
+            db.execute("UPDATE denuncias SET estado = ? WHERE id = ?", (novo_estado, id))
+            db.commit()
+            denuncia = db.execute("SELECT * FROM denuncias WHERE id = ?", (id,)).fetchone()
+
+        if resposta:
+            db.execute("""
+                INSERT INTO mensagens (codigo_acomp, conteudo, remetente, data_envio)
+                VALUES (?, ?, 'admin', datetime('now'))
+            """, (denuncia["codigo_acomp"], resposta))
+            db.commit()
+
+    # Deserializar anexos
+    anexos = []
+    if denuncia["anexos"]:
+        anexos = json.loads(denuncia["anexos"])
+
+    mensagens = db.execute("""SELECT * FROM mensagens WHERE codigo_acomp = ? ORDER BY data_envio ASC """, (denuncia["codigo_acomp"],)).fetchall()
+
+    return render_template("admin/ver_detalhes_denuncia.html",
+                       denuncia=denuncia,
+                       anexos=anexos,
+                       mensagens=mensagens)
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)

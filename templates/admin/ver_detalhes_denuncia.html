@@ -1,0 +1,127 @@
+{% extends "admin/index.html" %}
+{% block title %}Detalhes da Denúncia{% endblock %}
+
+{% block content %}
+<section class="section container-fluid">
+  
+  <!-- Título e Breadcrumb -->
+  <div class="pagetitle">
+    <h1>Detalhes da Denúncia</h1>
+    <nav>
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('ver_denuncias') }}">Ver Denúncias</a></li>
+        <li class="breadcrumb-item active">Detalhes da Denúncia</li>
+      </ol>
+    </nav>
+  </div>
+
+  <!-- Card com detalhes da denúncia -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title mb-3">
+        Código: <span class="text-primary">{{ denuncia.codigo_acomp }}</span>
+      </h5>
+
+      <p><strong>Tipo:</strong> {{ denuncia.tipo|capitalize }}</p>
+      <p><strong>Data de Submissão:</strong> {{ denuncia.data_submissao[:10] }}</p>
+      
+      <p>
+        <strong>Estado:</strong>
+        <span class="badge 
+          {% if denuncia.estado == 'pendente' %}bg-dark
+          {% elif denuncia.estado == 'em_analise' %}bg-warning
+          {% elif denuncia.estado == 'respondida' %}bg-success
+          {% elif denuncia.estado == 'concluida' %}bg-info
+          {% elif denuncia.estado == 'arquivada' %}bg-secondary
+          {% endif %}">
+          {{ denuncia.estado.replace('_', ' ').capitalize() }}
+        </span>
+      </p>
+
+      <hr>
+
+      <!-- Formulário para alterar estado -->
+      <form method="POST" class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label for="novo_estado" class="form-label"><strong>Alterar Estado da Denúncia</strong></label>
+          <select name="novo_estado" id="novo_estado" class="form-select" required>
+            <option value="">-- Selecione um novo estado --</option>
+            <option value="pendente" {% if denuncia.estado == 'pendente' %}selected{% endif %}>Pendente</option>
+            <option value="em_analise" {% if denuncia.estado == 'em_analise' %}selected{% endif %}>Em análise</option>
+            <option value="concluida" {% if denuncia.estado == 'concluida' %}selected{% endif %}>Concluída</option>
+            <option value="arquivada" {% if denuncia.estado == 'arquivada' %}selected{% endif %}>Arquivada</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-check-circle"></i> Actualizar
+          </button>
+        </div>
+      </form>
+
+      <hr>
+
+      <!-- Descrição -->
+      <p><strong>Descrição:</strong></p>
+      <div class="bg-light border p-3 rounded">
+        {{ denuncia.descricao }}
+      </div>
+
+      <!-- Anexos -->
+      {% if anexos and anexos|length > 0 %}
+        <hr>
+        <p><strong>Anexos:</strong></p>
+        <ul>
+          {% for ficheiro in anexos %}
+            <li>
+              <a href="{{ url_for('static', filename='uploads/' ~ ficheiro) }}" download>
+                <i class="bi bi-download"></i> {{ ficheiro }}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  </div>
+<!-- Últimas mensagens -->
+{% if mensagens and mensagens|length > 0 %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title">Últimas Mensagens</h5>
+      <ul class="list-group">
+        {% for msg in mensagens[-2:] %}
+          <li class="list-group-item">
+            <div class="d-flex justify-content-between">
+              <strong>{{ msg.remetente|capitalize }}</strong>
+              <small class="text-muted">{{ msg.data_envio }}</small>
+            </div>
+            <p class="mb-0">{{ msg.conteudo }}</p>
+          </li>
+        {% endfor %}
+      </ul>
+     <a href="" class="btn btn-outline-primary mb-3">
+
+  Ver todas as mensagens
+    
+      </a>
+    </div>
+  </div>
+{% endif %}
+
+  <!-- Card de resposta -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title">Responder à Denúncia</h5>
+      <form method="POST" action="">
+        <div class="mb-3">
+          <textarea class="form-control" name="resposta" rows="4" required placeholder="Escreva aqui a resposta..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-success">
+          <i class="bi bi-send"></i> Enviar Resposta
+        </button>
+      </form>
+    </div>
+  </div>
+
+</section>
+{% endblock %}
