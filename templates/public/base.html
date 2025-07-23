@@ -4,19 +4,23 @@
 
 {% block content %}
 <section class="section dashboard">
-  <div class="row justify-content-center align-items-center text-center" style="height: 20vh;">
-    <div class="col-md-8">
-      <h1 class="fw-bold" style="font-size: 2rem;">Bem-vindo ao Sistema Confidencia</h1>
-      <h2class="lead">Submeta denúncias e reclamações de forma segura e anónima.</h2>
+  <div class="container">
+    <div class="row align-items-center text-center text-md-start">
+      <!-- Texto -->
+      <div class="col-md-6 mb-4 mb-md-0">
+        <h2 class="fw-bold" style="font-size: 2rem;">Bem-vindo ao Sistema Confidencia</h2>
+        <p class="lead">Submeta denúncias e reclamações de forma segura e anónima.</p>
+      </div>
 
-      <div class="mt-4 text-center">
+      <!-- Imagem -->
+      <div class="col-md-6 text-center">
         <img src="{{ url_for('static', filename='assets/img/confidencia-logo.png') }}"
              alt="Logo Sistema"
              class="img-fluid"
-             style="max-width: 450px; height: auto;">
+             style="max-width: 500px; height: auto;">
       </div>
-
     </div>
   </div>
 </section>
+
 {% endblock %}
