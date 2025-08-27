@@ -17,6 +17,16 @@
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='login_v1/css/util.css') }}">
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='login_v1/css/main.css') }}">
 </head>
+<style>
+    .toggle-password {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: #999;
+    }
+  </style>
 <body>
 
   <div class="limiter">
@@ -49,11 +59,14 @@
          {% endif %}
 
 
-          <div class="wrap-input100 validate-input" data-validate="Senha é obrigatória">
-            <input class="input100" type="password" name="senha" placeholder="Senha" required>
+<div class="wrap-input100 validate-input" data-validate="Senha é obrigatória" style="position: relative;">
+            <input class="input100" type="password" name="senha" id="senha" placeholder="Senha" required>
             <span class="focus-input100"></span>
             <span class="symbol-input100">
               <i class="fa fa-lock" aria-hidden="true"></i>
+            </span>
+            <span class="toggle-password" onclick="togglePassword()">
+              <i class="fa fa-eye" id="eyeIcon"></i>
             </span>
           </div>
 
@@ -69,14 +82,16 @@
   <a class="txt2" href="#">
     Username / Password?
   </a>
+   
 </div>
+ 
 
         </form>
 
       </div>
     </div>
   </div>
-
+  
   <!-- Scripts -->
   <script src="{{ url_for('static', filename='login_v1/vendor/jquery/jquery-3.2.1.min.js') }}"></script>
   <script src="{{ url_for('static', filename='login_v1/vendor/bootstrap/js/popper.js') }}"></script>
@@ -90,12 +105,28 @@
 </body>
 </html>
 <script>
-  // Esconde o alerta após 4 segundos
-  setTimeout(function() {
-    const alert = document.querySelector('.alert');
-    if (alert) {
-      alert.classList.add('fade');
-      setTimeout(() => alert.remove(), 500); // remove após o fade
+    $('.js-tilt').tilt({ scale: 1.1 });
+
+    function togglePassword() {
+      const input = document.getElementById("senha");
+      const icon = document.getElementById("eyeIcon");
+      if (input.type === "password") {
+        input.type = "text";
+        icon.classList.remove("fa-eye");
+        icon.classList.add("fa-eye-slash");
+      } else {
+        input.type = "password";
+        icon.classList.remove("fa-eye-slash");
+        icon.classList.add("fa-eye");
+      }
     }
-  }, 4000);
-</script>
+
+    // Esconde alerta de erro após 4 segundos
+    setTimeout(function() {
+      const alert = document.querySelector('.alert');
+      if (alert) {
+        alert.classList.add('fade');
+        setTimeout(() => alert.remove(), 500);
+      }
+    }, 4000);
+  </script>

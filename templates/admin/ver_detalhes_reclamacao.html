@@ -1,0 +1,294 @@
+{% extends "admin/index.html" %}
+{% block title %}Detalhes da Reclamação{% endblock %}
+
+{% block content %}
+<style>
+.chat-container {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  max-height: 500px;
+  overflow-y: auto;
+  padding: 15px;
+  background-color: #f8f9fa;
+}
+.chat-message {
+  display: flex;
+  flex-direction: column;
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  position: relative;
+  word-wrap: break-word;
+  line-height: 1.4;
+  font-size: 0.95rem;
+}
+.chat-message.admin {
+  align-self: flex-end;
+  background-color: #198754;
+  color: white;
+  border-top-right-radius: 0;
+}
+.chat-message.cidadao {
+  align-self: flex-start;
+  background-color: #e9ecef;
+  color: #212529;
+  border-top-left-radius: 0;
+}
+.chat-meta {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+.chat-input {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.chat-input textarea {
+  flex: 1;
+  resize: none;
+  border-radius: 6px;
+  min-height: 50px;
+}
+.chat-input button {
+  white-space: nowrap;
+}
+@media (max-width: 768px) {
+  .chat-message {
+    max-width: 100%;
+    font-size: 0.9rem;
+  }
+  .chat-input {
+    flex-direction: column;
+  }
+  .chat-input button {
+    width: 100%;
+  }
+}
+</style>
+
+
+<section class="section container-fluid">
+  <div class="pagetitle d-flex align-items-center">
+    <button type="button" class="btn btn-link p-0 me-2" onclick="voltarParaLista()" style="text-decoration: none;">
+      <i class="ri-arrow-left-fill" style="font-size: 2.5rem;"></i>
+    </button>
+    <h1 class="mb-0">Detalhes da Reclamação</h1>
+  </div>
+</section>
+
+
+  <!-- Dados da reclamação -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title mb-3">
+        Código:
+        <span class="text-primary">{{ '*' * (reclamacao.codigo_acomp|length - 3) }}{{ reclamacao.codigo_acomp[-3:] }}</span>
+      </h5>
+
+      <p><strong>Nome:</strong> {{ reclamacao.nome }}</p>
+      <p><strong>Contacto:</strong> {{ reclamacao.contacto }}</p>
+      <p><strong>Tipo:</strong> {{ reclamacao.tipo|capitalize }}</p>
+      <p><strong>Data de Submissão:</strong> {{ reclamacao.data_submissao[:10] }}</p>
+      <p><strong>Data de Ocorrência:</strong> {{ reclamacao.data_ocorrencia[:10] }}</p>
+      <p><strong>Data Prevista de Resposta:</strong> {{ reclamacao.prazo_resposta[:10] }}</p>
+ 
+
+      <p><strong>Estado:</strong>
+  <span data-estado-badge
+        class="badge 
+          {% if reclamacao.estado == 'pendente' %}bg-dark
+          {% elif reclamacao.estado == 'em_analise' %}bg-warning
+          {% elif reclamacao.estado == 'respondida' %}bg-success
+          {% elif reclamacao.estado == 'concluida' %}bg-info
+          {% elif reclamacao.estado == 'arquivada' %}bg-secondary
+          {% endif %}">
+    {{ reclamacao.estado.replace('_', ' ').capitalize() }}
+  </span>
+</p>
+
+
+      <hr>
+
+      <!-- Form de estado -->
+      <form id="estadoForm" class="row g-2 align-items-end">
+  <div class="col-md-4">
+    <label class="form-label"><strong>Alterar Estado</strong></label>
+    <select name="novo_estado" id="novo_estado" class="form-select" required>
+      <option value="">-- Selecione --</option>
+      <option value="pendente"   {% if reclamacao.estado == 'pendente' %}selected{% endif %}>Pendente</option>
+      <option value="em_analise" {% if reclamacao.estado == 'em_analise' %}selected{% endif %}>Em análise</option>
+      <option value="concluida"  {% if reclamacao.estado == 'concluida' %}selected{% endif %}>Concluída</option>
+      <option value="arquivada"  {% if reclamacao.estado == 'arquivada' %}selected{% endif %}>Arquivada</option>
+    </select>
+  </div>
+  <div class="col-md-4">
+    <button type="submit" class="btn btn-primary w-100">
+      <i class="bi bi-check-circle"></i> Actualizar
+    </button>
+  </div>
+</form>
+
+      <hr>
+      <p><strong>Descrição:</strong></p>
+      <div class="bg-light border p-3 rounded">{{ reclamacao.descricao }}</div>
+
+      {% if anexos %}
+      <hr>
+      <p><strong>Anexos:</strong></p>
+      <ul>
+        {% for ficheiro in anexos %}
+        <li>
+          <a href="{{ url_for('static', filename='uploads/' ~ ficheiro) }}" download>
+            <i class="bi bi-download"></i> {{ ficheiro }}
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Mensagens -->
+  <section class="section">
+    <h5 class="mt-4">Últimas Mensagens</h5>
+    <div class="chat-container mb-3" id="chatBox">
+      {% if ultima_cidadao %}
+      <div class="chat-message cidadao">
+        <div class="chat-meta"><strong>Colaborador</strong> — {{ ultima_cidadao.data_envio }}</div>
+        <div>{{ ultima_cidadao.conteudo }}</div>
+      </div>
+      {% endif %}
+      {% if ultima_admin %}
+      <div class="chat-message admin">
+        <div class="chat-meta"><strong>Admin</strong> — {{ ultima_admin.data_envio }}</div>
+        <div>{{ ultima_admin.conteudo }}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Formulário AJAX -->
+    <form id="chatForm" method="post" class="chat-input">
+      <input type="hidden" name="codigo" value="{{ reclamacao.codigo_acomp }}">
+      <textarea name="mensagem" id="mensagem" class="form-control" rows="2" required placeholder="Escreva sua mensagem..."></textarea>
+      <button type="submit" class="btn btn-success"><i class="bi bi-send"></i> Enviar</button>
+    </form>
+
+<div class="text-end mt-2">
+    <a href="{{ url_for('ver_mensagens') }}?codigo={{ reclamacao.codigo_acomp }}" 
+     class="btn btn-outline-secondary btn-sm">
+    Ver todas as mensagens
+  </a>
+</div>
+
+  </section>
+</section>
+
+<script>
+document.getElementById("chatForm").addEventListener("submit", function(event) {
+  event.preventDefault();
+
+  const form = event.target;
+  const formData = new FormData(form);
+  const mensagem = formData.get("mensagem").trim();
+
+  if (!mensagem) return;
+
+  fetch("/admin/reclamacoes/responder", {
+    method: "POST",
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    const novaMsg = document.createElement("div");
+    novaMsg.classList.add("chat-message", "admin");
+
+    const meta = document.createElement("div");
+    meta.classList.add("chat-meta");
+    meta.innerHTML = "<strong>Admin</strong> — agora mesmo";
+
+    const texto = document.createElement("div");
+    texto.textContent = mensagem;
+
+    novaMsg.appendChild(meta);
+    novaMsg.appendChild(texto);
+
+    const chatBox = document.getElementById("chatBox");
+    chatBox.appendChild(novaMsg);
+    form.mensagem.value = "";
+    chatBox.scrollTop = chatBox.scrollHeight;
+   
+  })
+  .catch(error => {
+    alert("Erro ao enviar mensagem: " + error.message);
+  });
+});
+
+document.addEventListener("DOMContentLoaded", function() {
+  const chatBox = document.getElementById("chatBox");
+  chatBox.scrollTop = chatBox.scrollHeight;
+});
+</script>
+<script>
+  function voltarParaLista() {
+    // Se veio da lista de reclamações, usa o back do navegador (preserva paginação/scroll)
+    if (document.referrer && new URL(document.referrer).pathname.includes('/admin/reclamacoes')) {
+      history.back();
+      return;
+    }
+
+    // Fallback: volta para a lista com os filtros que chegaram por querystring
+    const params = new URLSearchParams({
+      tipo: "{{ request.args.get('tipo', '') }}",
+      estado: "{{ request.args.get('estado', '') }}",
+      data: "{{ request.args.get('data', '') }}"
+    });
+    window.location.href = "{{ url_for('ver_reclamacoes') }}?" + params.toString();
+  }
+</script>
+<script>
+  // Atualizar estado sem recarregar (evita criar nova entrada no histórico)
+  document.getElementById('estadoForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const novoEstado = document.getElementById('novo_estado').value;
+    if (!novoEstado) return;
+
+    fetch("/admin/reclamacoes/alterar_estado", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ id: {{ reclamacao.id }}, novo_estado: novoEstado })
+    })
+    .then(r => {
+      if (!r.ok) throw new Error("Falha ao atualizar estado");
+      return r.json();
+    })
+    .then(() => {
+  // ← ADICIONA ISTO: avisa a lista qual item mudou
+  sessionStorage.setItem('reclamacaoAtualizada', JSON.stringify({
+    id: {{ reclamacao.id }},
+    estado: novoEstado
+  }));
+
+  // Atualiza a badge localmente (já tinhas isso)
+  const badge = document.querySelector('[data-estado-badge]');
+  const mapaClasse = {
+    pendente:   'bg-dark',
+    em_analise: 'bg-warning',
+    concluida:  'bg-info',
+    arquivada:  'bg-secondary'
+  };
+  badge.className = 'badge ' + (mapaClasse[novoEstado] || 'bg-dark');
+  const texto = novoEstado.replace('_',' ');
+  badge.textContent = texto.charAt(0).toUpperCase() + texto.slice(1);
+  badge.animate([{opacity:0.3},{opacity:1}], {duration:300});
+})
+
+    .catch(err => alert(err.message));
+  });
+</script>
+
+{% endblock %}

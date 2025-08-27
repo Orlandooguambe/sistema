@@ -13,7 +13,7 @@
   scroll-behavior: smooth;
 }
 html {
-  font-size: 20px; /* Aumenta tudo 125% */
+  font-size: 16px; /* Aumenta tudo 125% */
 }
 
 html, body {
@@ -640,7 +640,7 @@ h6 {
 
   #main,
   #footer {
-    margin-left: 300px;
+    margin-left: 280px;
   }
 }
 

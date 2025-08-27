@@ -1,0 +1,221 @@
+{% extends "admin/index.html" %}
+{% block title %}{{ 'Editar Utilizador' if modo=='editar' else 'Novo Utilizador' }}{% endblock %}
+{% block content %}
+
+<style>
+  /* retoques visuais */
+  .section-title{font-weight:700;margin-top:.25rem;margin-bottom:.25rem}
+  .hint{font-size:.85rem;color:#6c757d}
+  .card-section{border:1px solid #e9ecef;border-radius:.75rem;padding:14px;margin-top:6px}
+  .sticky-actions{position:sticky;bottom:0;background:#fff;border-top:1px solid #e9ecef;padding:10px;text-align:right}
+  .count-chip{font-size:.75rem;padding:.15rem .5rem;border-radius:999px;background:#eef2f6}
+  .form-label{font-weight:700}
+</style>
+
+<div class="pagetitle">
+  <h1>{{ 'Editar Utilizador' if modo=='editar' else 'Novo Utilizador' }}</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('painel') }}">Home</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('usuarios_listar') }}">Utilizadores</a></li>
+      <li class="breadcrumb-item active">{{ 'Editar' if modo=='editar' else 'Novo' }}</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section">
+  <form method="post" class="row g-3" action="{{ request.path }}">
+    <!-- === CARTÃO: Dados do utilizador === -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body p-3">
+          <div class="row g-3">
+            <div class="col-12">
+              <div class="section-title">Dados do utilizador</div>
+              <div class="hint">Preencha nome e email. {% if modo=='editar' %}A senha é opcional (só preencha para alterar).{% else %}Defina uma senha inicial.{% endif %}</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Nome <span class="text-danger">*</span></label>
+              <input name="nome" class="form-control" required placeholder="Ex.: Maria João" value="{{ u.nome if u else '' }}">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Email <span class="text-danger">*</span></label>
+              <input name="email" type="email" class="form-control" required placeholder="nome@empresa.co.mz" value="{{ u.email if u else '' }}">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">
+                Senha
+                {% if modo!='editar' %}<span class="text-danger">*</span>{% else %}<small class="text-muted">(deixar vazio para manter)</small>{% endif %}
+              </label>
+              <div class="input-group">
+                <input name="senha" id="pwd" type="password" class="form-control" {% if modo!='editar' %}required{% endif %} placeholder="••••••••">
+                <button class="btn btn-outline-secondary" type="button" onclick="togglePwd()">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
+              {% if modo!='editar' %}
+                <div class="hint">Peça ao utilizador para trocar no primeiro acesso.</div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Perfil <span class="text-danger">*</span></label>
+              <select name="perfil" id="perfilSel" class="form-select" required>
+                <option value="">— selecione —</option>
+                <option value="admin_geral" {{ 'selected' if (u and u.perfil=='admin_geral') else '' }}>Administrador Geral</option>
+                <option value="admin" {{ 'selected' if (u and u.perfil=='admin') else '' }}>Administrador</option>
+                <option value="denuncias" {{ 'selected' if (u and u.perfil=='denuncias') else '' }}>Acesso a Denúncias</option>
+                <option value="reclamacoes" {{ 'selected' if (u and u.perfil=='reclamacoes') else '' }}>Acesso a Reclamações</option>
+                {# opcionais:
+                <option value="gestor" {{ 'selected' if (u and u.perfil=='gestor') else '' }}>Gestor</option>
+                <option value="analista" {{ 'selected' if (u and u.perfil=='analista') else '' }}>Analista</option>
+                <option value="leitor" {{ 'selected' if (u and u.perfil=='leitor') else '' }}>Leitor</option>
+                #}
+              </select>
+              <div class="hint">O perfil controla que módulos o utilizador pode abrir.</div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Cargo</label>
+              <input name="cargo" class="form-control" placeholder="Ex.: Técnico RH" value="{{ u.cargo if u else '' }}">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Delegação</label>
+              <select name="delegacao_id" class="form-select">
+                <option value="">—</option>
+                {% for d in delegacoes %}
+                  <option value="{{ d.id }}" {{ 'selected' if (u and u.delegacao_id==d.id) else '' }}>{{ d.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- === CARTÃO: Tipos de Reclamação (só para perfil 'reclamacoes') === -->
+    <div class="col-12" id="blkRecTipos" style="display:none;">
+      <div class="card">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div>
+              <div class="section-title mb-1">Tipos de Reclamação permitidos</div>
+              <div class="hint">
+                Selecione apenas os tipos que este utilizador poderá visualizar/gerir.
+                <span id="selCount" class="count-chip ms-2">0 selecionados</span>
+              </div>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-sm btn-outline-success" onclick="marcarTodos(true)">Marcar todos</button>
+              <button type="button" class="btn btn-sm btn-outline-danger" onclick="marcarTodos(false)">Limpar todos</button>
+            </div>
+          </div>
+
+          {% if tipos_rec_groups and tipos_rec_groups|length %}
+            <div class="accordion" id="accTiposRec">
+              {% for group_label, options in tipos_rec_groups %}
+                {% set gid = 'grp' ~ loop.index %}
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="h-{{ gid }}">
+                    <button class="accordion-button collapsed py-2" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#c-{{ gid }}"
+                            aria-expanded="false" aria-controls="c-{{ gid }}">
+                      {{ group_label }}
+                    </button>
+                  </h2>
+                  <div id="c-{{ gid }}" class="accordion-collapse collapse"
+                       aria-labelledby="h-{{ gid }}" data-bs-parent="#accTiposRec">
+                    <div class="accordion-body py-3">
+                      <div class="d-flex gap-2 mb-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="marcarGrupo('{{ gid }}', true)">Marcar grupo</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="marcarGrupo('{{ gid }}', false)">Limpar grupo</button>
+                      </div>
+                      <div class="row gy-2">
+                        {% for val, label in options %}
+                          {% set checked = (selected_rec_tipos and (val in selected_rec_tipos)) %}
+                          <div class="col-md-4">
+                            <div class="form-check">
+                              <input class="form-check-input rec-cb"
+                                     type="checkbox" name="rec_tipos[]"
+                                     id="tip_{{ gid }}_{{ loop.index }}"
+                                     value="{{ val }}" {{ 'checked' if checked else '' }}
+                                     onchange="updateSelCount()">
+                              <label class="form-check-label" for="tip_{{ gid }}_{{ loop.index }}">{{ label }}</label>
+                            </div>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-muted small">
+              (Sem catálogo de tipos. Adiciona no backend <code>TIPOS_REC_GROUPS</code>.)
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Ações -->
+    <div class="col-12">
+      <div class="card">
+        <div class="sticky-actions">
+          <a class="btn btn-outline-secondary" href="{{ url_for('usuarios_listar') }}">Cancelar</a>
+          <button class="btn btn-primary" type="submit">
+            {{ 'Guardar alterações' if modo=='editar' else 'Criar utilizador' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</section>
+
+<script>
+  function togglePwd(){
+    const i = document.getElementById('pwd');
+    i.type = i.type === 'password' ? 'text' : 'password';
+  }
+
+  const perfilSel = document.getElementById('perfilSel');
+  const blkRec = document.getElementById('blkRecTipos');
+
+  function toggleRecTipos() {
+    const show = (perfilSel.value === 'reclamacoes');
+    blkRec.style.display = show ? '' : 'none';
+    if (!show) {
+      blkRec.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+      updateSelCount();
+    }
+  }
+  perfilSel.addEventListener('change', toggleRecTipos);
+  // estado inicial (em edição pode já vir reclamacoes)
+  toggleRecTipos();
+
+  function marcarGrupo(gid, marcar) {
+    document.querySelectorAll(`#c-${gid} input[type="checkbox"]`)
+      .forEach(cb => cb.checked = !!marcar);
+    updateSelCount();
+  }
+  function marcarTodos(marcar) {
+    blkRec.querySelectorAll('input[type="checkbox"]')
+      .forEach(cb => cb.checked = !!marcar);
+    updateSelCount();
+  }
+
+  function updateSelCount() {
+    const n = blkRec.querySelectorAll('input.rec-cb:checked').length;
+    const chip = document.getElementById('selCount');
+    if (chip) chip.textContent = `${n} selecionado${n===1?'':'s'}`;
+  }
+  // conta na carga (útil em edição)
+  updateSelCount();
+</script>
+
+{% endblock %}

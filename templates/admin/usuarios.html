@@ -1,0 +1,77 @@
+{% extends "admin/index.html" %}
+{% block title %}Utilizadores{% endblock %}
+{% block content %}
+<div class="pagetitle">
+  <h1>Utilizadores</h1>
+  <nav><ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('painel') }}">Home</a></li>
+    <li class="breadcrumb-item active">Utilizadores</li>
+  </ol></nav>
+</div>
+
+<section class="section">
+  <div class="mb-3 d-flex gap-2">
+    <a class="btn btn-primary" href="{{ url_for('usuarios_novo') }}">
+      <i class="bi bi-person-plus"></i> Novo utilizador
+    </a>
+  </div>
+
+  <div class="card">
+    <div class="card-body p-3">
+      <table class="table table-sm table-hover align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>#</th>
+            <th>Nome</th>
+            <th>Email</th>
+            <th>Perfil</th>
+            <th>Delegação</th>
+            <th>Estado</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in usuarios %}
+          <tr>
+            <td class="text-muted">{{ u.id }}</td>
+            <td class="fw-bold">{{ u.nome }}</td>
+            <td>{{ u.email }}</td>
+            <td>
+              <span class="badge bg-info text-dark text-uppercase">{{ u.perfil }}</span>
+            </td>
+            <td>{{ u.delegacao_nome or '—' }}</td>
+            <td>
+              {% if u.ativo %}
+                <span class="badge bg-success">Activo</span>
+              {% else %}
+                <span class="badge bg-secondary">Inactivo</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('usuarios_editar', uid=u.id) }}">
+                <i class="bi bi-pencil-square"></i> Editar
+              </a>
+              {% if u.ativo %}
+                <form method="post" action="{{ url_for('usuarios_desativar', uid=u.id) }}" class="d-inline">
+                  <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Desativar este utilizador?')">
+                    Desativar
+                  </button>
+                </form>
+              {% else %}
+                <form method="post" action="{{ url_for('usuarios_ativar', uid=u.id) }}" class="d-inline">
+                  <button class="btn btn-sm btn-outline-success">
+                    Ativar
+                  </button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="text-center text-muted py-4">Sem utilizadores.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

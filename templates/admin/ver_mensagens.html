@@ -1,0 +1,383 @@
+{% extends "admin/index.html" %}
+{% block title %}Mensagens{% endblock %}
+
+{% block content %}
+<style>
+  /* ====== Layout base ====== */
+  .chat-wrap {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 0;
+    height: calc(100vh - 140px); /* ajusta conforme teu header/footer */
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    background: #fff;
+  }
+  @media (max-width: 992px) {
+    .chat-wrap { grid-template-columns: 1fr; height: calc(100vh - 180px); }
+    .chat-sidebar { height: 40vh; }
+  }
+
+  /* ====== Sidebar ====== */
+  .chat-sidebar {
+    border-right: 1px solid #dee2e6;
+    background: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .chat-sidebar .search {
+    padding: 12px;
+    border-bottom: 1px solid #e9ecef;
+    background: #fff;
+  }
+  .chat-list {
+    overflow-y: auto;
+  }
+  .chat-item {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+    align-items: center;
+    transition: background .15s ease;
+  }
+  .chat-item:hover { background: #eef2f6; }
+  .chat-item.active { background: #e8eefc; }
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-weight: 700; color: #fff;
+    background: linear-gradient(135deg,#6a8dff,#3ac8ff);
+  }
+  .chat-item .meta {
+    min-width: 80px;
+    text-align: right;
+    font-size: .8rem;
+    color: #6c757d;
+  }
+  .chat-item .title {
+    font-weight: 700; font-size: 0.95rem; color: #0d1b2a;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .badge-type {
+    font-size: .65rem; font-weight: 600;
+  }
+  .chat-item .preview {
+    font-size: .85rem; color: #495057;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  /* ====== Main / Chat ====== */
+  .chat-main {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    min-height: 0;
+    background: #fff;
+    overflow: hidden;
+  }
+  .chat-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e9ecef;
+    background: #fff;
+    display: flex; align-items: center; gap: 12px; justify-content: space-between;
+  }
+  .chat-header .left {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .chat-header .room .name { font-weight: 700; font-size: 1rem; }
+  .chat-header .room .sub  { font-size: .8rem; color: #6c757d; }
+
+  .chat-body {
+    background: #f3f6fb;
+    overflow-y: auto;
+    padding: 16px 16px 6px;
+  }
+  .typing {
+    font-size: .85rem; color: #6c757d; padding: 6px 4px;
+  }
+  .msg-row { display: flex; flex-direction: column; }
+  .msg-row.admin   { align-items: flex-end; }
+  .msg-row.cidadao { align-items: flex-start; }
+  .bubble {
+    max-width: min(70%, 720px);
+    padding: 10px 14px;
+    border-radius: 14px;
+    margin: 6px 0;
+    position: relative;
+    line-height: 1.45;
+    font-size: .95rem;
+    display: inline-block;
+    word-wrap: break-word;
+  }
+  .bubble .time { display: block; font-size: .72rem; opacity: .7; margin-top: 6px; }
+  .bubble.admin   { background: #198754; color: #fff; border-top-right-radius: 4px; }
+  .bubble.cidadao { background: #e9ecef; color: #212529; border-top-left-radius: 4px; }
+
+  .chat-input {
+    border-top: 1px solid #e9ecef;
+    padding: 10px; background: #fff;
+    display: grid; grid-template-columns: 1fr auto; gap: 8px;
+    position: sticky; bottom: 0; z-index: 1;
+  }
+  .chat-input textarea {
+    resize: none; min-height: 48px; max-height: 120px;
+  }
+</style>
+
+<section class="section container-fluid">
+  <div class="pagetitle mb-3">
+    <h1>Mensagens</h1>
+  </div>
+
+  <div class="chat-wrap">
+    <!-- ========== SIDEBAR ========== -->
+    <aside class="chat-sidebar">
+      <div class="search">
+        <input id="searchConv" type="text" class="form-control form-control-sm" placeholder="Pesquisar conversas (código, tipo)…">
+      </div>
+      <div id="chatList" class="chat-list">
+        {% for c in conversas %}
+          {% set masked = '*' * (c.codigo_acomp|length - 3) ~ c.codigo_acomp[-3:] %}
+          {% set is_denuncia = c.denuncia_id is not none %}
+          {% set badge = 'Denúncia' if is_denuncia else 'Reclamação' %}
+          {% set badge_class = 'bg-danger' if is_denuncia else 'bg-primary' %}
+          {% set det_url = (
+                c.denuncia_id and url_for('ver_detalhes_denuncia', id=c.denuncia_id)
+                or c.reclamacao_id and url_for('ver_detalhes_reclamacao', id=c.reclamacao_id)
+                or '#'
+             ) %}
+         <div class="chat-item {% if c.codigo_acomp == codigo_ativo %}active{% endif %}"
+                data-codigo="{{ c.codigo_acomp }}"
+                data-tipo="{{ 'denuncia' if is_denuncia else 'reclamacao' }}"
+                data-det-url="{{ det_url }}"
+                onclick="selecionarConversa(this)">
+
+            <div class="avatar" aria-hidden="true">{{ masked[-3:] }}</div>
+            <div>
+              <div class="title">
+                <span>{{ masked }}</span>
+                <span class="badge {{ badge_class }} badge-type">{{ badge }}</span>
+              </div>
+              <div class="preview">
+                {{ (c.ultima_mensagem or '')[:50] }}{% if c.ultima_mensagem and c.ultima_mensagem|length > 50 %}…{% endif %}
+              </div>
+            </div>
+            <div class="meta">
+              <div>{{ c.data_ultima or '—' }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </aside>
+
+    <!-- ========== MAIN CHAT ========== -->
+    <main class="chat-main">
+      <!-- header -->
+      <div class="chat-header">
+        <div class="left">
+          {% set masked_header = codigo_ativo and ('*' * (codigo_ativo|length - 3) ~ codigo_ativo[-3:]) or '—' %}
+          <div class="avatar">{{ codigo_ativo and codigo_ativo[-3:] or '—' }}</div>
+          <div class="room">
+            <div class="name">Conversa {{ masked_header }}</div>
+            <div id="roomSub" class="sub">Carrega uma conversa à esquerda para começar</div>
+          </div>
+        </div>
+        <div>
+          <a id="btnVerDetalhes" href="#" class="btn btn-sm btn-outline-primary disabled" tabindex="-1" aria-disabled="true">
+            Ver detalhes
+          </a>
+        </div>
+      </div>
+
+      <!-- histórico -->
+      <div id="chatBox" class="chat-body">
+        {% if mensagens and mensagens|length %}
+          {% for msg in mensagens %}
+            <div class="msg-row {{ msg.remetente }}">
+              <div class="bubble {{ msg.remetente }}">
+                <div>{{ msg.conteudo }}</div>
+                <span class="time">{{ msg.data_envio }}</span>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="typing">Sem mensagens nesta conversa ainda.</div>
+        {% endif %}
+      </div>
+
+      <!-- input -->
+      <form id="chatForm" class="chat-input">
+        <input type="hidden" name="codigo" id="codigoAtivo" value="{{ codigo_ativo or '' }}">
+        <textarea class="form-control" name="mensagem" id="mensagem" placeholder="Escreva sua mensagem…" required></textarea>
+        <button id="btnEnviar" type="submit" class="btn btn-success" {% if not codigo_ativo %}disabled{% endif %}>
+          <i class="bi bi-send"></i>
+        </button>
+      </form>
+    </main>
+  </div>
+</section>
+
+<script>
+  // ======== Auxiliares ========
+  function maskCode(code) {
+    if (!code) return '—';
+    return '*'.repeat(Math.max(0, code.length - 3)) + code.slice(-3);
+  }
+  function scrollToBottom() {
+    const box = document.getElementById('chatBox');
+    box.scrollTop = box.scrollHeight;
+  }
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function renderMensagens(msgs) {
+    const box = document.getElementById('chatBox');
+    box.innerHTML = '';
+    if (!msgs || !msgs.length) {
+      box.innerHTML = '<div class="typing">Sem mensagens nesta conversa ainda.</div>';
+      return;
+    }
+    msgs.forEach(m => {
+      const row = document.createElement('div');
+      row.className = 'msg-row ' + (m.remetente === 'admin' ? 'admin' : 'cidadao');
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble ' + (m.remetente === 'admin' ? 'admin' : 'cidadao');
+      bubble.innerHTML = `<div>${escapeHtml(m.conteudo)}</div><span class="time">${m.data_envio}</span>`;
+
+      row.appendChild(bubble);
+      box.appendChild(row);
+    });
+  }
+
+  function setHeaderInfo(codigo, tipo) {
+    const sub = document.getElementById('roomSub');
+    const btn = document.getElementById('btnVerDetalhes');
+    const masked = maskCode(codigo);
+    if (codigo) {
+      sub.textContent = `Conversando com ${masked} · ${tipo === 'denuncia' ? 'Denúncia' : 'Reclamação'}`;
+      btn.classList.remove('disabled');
+      btn.removeAttribute('aria-disabled');
+    } else {
+      sub.textContent = 'Carrega uma conversa à esquerda para começar';
+      btn.classList.add('disabled'); btn.setAttribute('aria-disabled','true'); btn.href='#';
+    }
+  }
+
+  // ======== Selecionar conversa ========
+  function selecionarConversa(el) {
+    // UI ativa
+    document.querySelectorAll('.chat-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+
+    const codigo = el.getAttribute('data-codigo');
+    const tipo   = el.getAttribute('data-tipo') || (el.querySelector('.badge-type')?.textContent === 'Denúncia' ? 'denuncia' : 'reclamacao');
+    const detUrl = el.getAttribute('data-det-url');
+
+    // Atualiza header (avatar + título + subtítulo)
+    const avatarHeader = document.querySelector('.chat-header .avatar');
+    if (avatarHeader) avatarHeader.textContent = codigo ? codigo.slice(-3) : '—';
+    const nameEl = document.querySelector('.chat-header .room .name');
+    if (nameEl) nameEl.textContent = 'Conversa ' + maskCode(codigo);
+    setHeaderInfo(codigo, tipo);
+
+    // Botão detalhes
+    if (detUrl) {
+      const btn = document.getElementById('btnVerDetalhes');
+      btn.href = detUrl;
+      btn.classList.remove('disabled'); btn.removeAttribute('aria-disabled');
+    }
+
+    // Habilita envio, define hidden
+    document.getElementById('codigoAtivo').value = codigo;
+    document.getElementById('btnEnviar').disabled = false;
+
+    // Atualiza URL (sem reload)
+    const url = new URL(window.location.href);
+    url.searchParams.set('codigo', codigo);
+    history.replaceState({}, '', url);
+
+    // Carrega mensagens
+    fetch(`/admin/mensagens/${encodeURIComponent(codigo)}`)
+      .then(r => r.json())
+      .then(renderMensagens)
+      .then(scrollToBottom)
+      .catch(() => alert('Erro ao carregar conversa'));
+  }
+
+  // ======== Enviar mensagem (AJAX) ========
+  document.getElementById('chatForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const codigo = document.getElementById('codigoAtivo').value;
+    const txt = document.getElementById('mensagem');
+    const mensagem = (txt.value || '').trim();
+    if (!codigo || !mensagem) return;
+
+    const fd = new FormData();
+    fd.append('codigo', codigo);
+    fd.append('mensagem', mensagem);
+
+    fetch('/admin/mensagens/responder', { method: 'POST', body: fd })
+      .then(r => { if (!r.ok) throw new Error('Erro ao enviar'); return r.json(); })
+      .then(() => {
+        // adiciona na tela sem refetch
+        const box = document.getElementById('chatBox');
+        const row = document.createElement('div');
+        row.className = 'msg-row admin';
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble admin';
+        bubble.innerHTML = `<div>${escapeHtml(mensagem)}</div><span class="time">agora mesmo</span>`;
+        row.appendChild(bubble);
+        box.appendChild(row);
+        txt.value = '';
+        scrollToBottom();
+
+        // preview na sidebar
+        const active = document.querySelector(`.chat-item.active .preview`);
+        if (active) active.textContent = mensagem.slice(0, 50) + (mensagem.length > 50 ? '…' : '');
+      })
+      .catch(err => alert(err.message));
+  });
+
+  // ======== Busca local ========
+  document.getElementById('searchConv').addEventListener('input', function () {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('#chatList .chat-item').forEach(item => {
+      const text = item.innerText.toLowerCase();
+      item.style.display = text.includes(q) ? '' : 'none';
+    });
+  });
+
+  // ======== Inicialização (quando já vem codigo_ativo do backend) ========
+  (function initStart() {
+    {% if codigo_ativo %}
+      const cur = document.querySelector(`.chat-item[data-codigo="{{ codigo_ativo }}"]`);
+      if (cur) {
+        cur.classList.add('active');
+        const tipo   = cur.getAttribute('data-tipo');
+        const detUrl = cur.getAttribute('data-det-url');
+
+        // avatar + título
+        const avatarHeader = document.querySelector('.chat-header .avatar');
+        if (avatarHeader) avatarHeader.textContent = "{{ codigo_ativo[-3:] if codigo_ativo else '—' }}";
+        const nameEl = document.querySelector('.chat-header .room .name');
+        if (nameEl) nameEl.textContent = 'Conversa ' + maskCode("{{ codigo_ativo }}");
+
+        setHeaderInfo("{{ codigo_ativo }}", tipo);
+        if (detUrl) {
+          const btn = document.getElementById('btnVerDetalhes');
+          btn.href = detUrl;
+          btn.classList.remove('disabled'); btn.removeAttribute('aria-disabled');
+        }
+        document.getElementById('btnEnviar').disabled = false;
+      }
+      scrollToBottom();
+    {% endif %}
+  })();
+</script>
+{% endblock %}

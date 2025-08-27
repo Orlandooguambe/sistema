@@ -1,6 +1,6 @@
 {% extends "public/index.html" %}
 
-{% block title %}{% endblock %}
+{% block title %}Fazer Denúncia - Sistema Confidencia{% endblock %}
 
 {% block content %}
 <div class="pagetitle">
@@ -15,10 +15,13 @@
 
 <section class="section">
   <form method="post" action="/denuncia" enctype="multipart/form-data" class="row g-3">
+
     <div class="col-md-6">
-      <label for="tipo_denuncia" class="form-label">Tipo de Denúncia</label>
+      <label for="tipo_denuncia" class="form-label fw-bold">
+        Tipo de Denúncia <span class="text-danger">*</span>
+      </label>
       <select id="tipo_denuncia" name="tipo_denuncia" class="form-select" required>
-       <option value="" selected disabled>Escolha...</option>
+        <option value="" selected disabled>Escolha...</option>
         <option value="corrupcao">Corrupção</option>
         <option value="fraude">Fraude</option>
         <option value="uso_abusivo">Uso abusivo de recursos da empresa</option>
@@ -31,7 +34,9 @@
     </div>
 
     <div class="col-md-6">
-      <label for="delegacao" class="form-label">Delegação de Destino</label>
+      <label for="delegacao" class="form-label fw-bold">
+        Delegação de Destino <span class="text-danger">*</span>
+      </label>
       <select id="delegacao" name="delegacao" class="form-select" required>
         <option value="" selected disabled>Escolha a delegação</option>
         <option value="sede">Sede</option>
@@ -43,23 +48,78 @@
     </div>
 
     <div class="col-md-6">
-      <label for="data_ocorrencia" class="form-label">Data da Ocorrência</label>
-      <input type="date" id="data_ocorrencia" name="data_ocorrencia" class="form-control" value="{{ current_date }}" required>
+      <label for="data_ocorrencia" class="form-label fw-bold">
+        Data da Ocorrência <span class="text-danger">*</span>
+      </label>
+      <input type="date" id="data_ocorrencia" name="data_ocorrencia"
+             class="form-control" value="{{ current_date }}" required>
     </div>
 
     <div class="col-12">
-      <label for="descricao" class="form-label">Descrição da Denúncia</label>
+      <label for="descricao" class="form-label fw-bold">
+        Descrição da Denúncia <span class="text-danger">*</span>
+      </label>
       <textarea id="descricao" name="descricao" class="form-control" rows="5" required></textarea>
     </div>
 
     <div class="col-12">
-      <label for="anexos" class="form-label">Anexar Documentos (opcional)</label>
-      <input class="form-control" type="file" id="anexos" name="anexos" multiple>
-    </div>
+  <label for="anexos" class="form-label fw-bold">Anexar Documentos (opcional)</label>
+  <input class="form-control" type="file" id="anexos" name="anexos" multiple>
+  <div id="preview-anexos" class="mt-2"></div>
+</div>
+
 
     <div class="col-12">
       <button type="submit" class="btn btn-primary">Submeter Denúncia</button>
     </div>
+
   </form>
 </section>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const input = document.getElementById("anexos");
+  const preview = document.getElementById("preview-anexos");
+
+  let ficheirosSelecionados = [];
+
+  input.addEventListener("change", function () {
+    ficheirosSelecionados = Array.from(input.files);
+    mostrarPreview();
+  });
+
+  function mostrarPreview() {
+    preview.innerHTML = "";
+
+    ficheirosSelecionados.forEach((ficheiro, index) => {
+      const div = document.createElement("div");
+      div.className = "d-flex align-items-center mb-1";
+
+      const nome = document.createElement("span");
+      nome.textContent = ficheiro.name;
+      nome.className = "me-2";
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn btn-sm btn-outline-danger";
+      btn.textContent = "❌";
+      btn.onclick = function () {
+        ficheirosSelecionados.splice(index, 1);
+        atualizarInput();
+        mostrarPreview();
+      };
+
+      div.appendChild(nome);
+      div.appendChild(btn);
+      preview.appendChild(div);
+    });
+  }
+
+  function atualizarInput() {
+    const dataTransfer = new DataTransfer();
+    ficheirosSelecionados.forEach(f => dataTransfer.items.add(f));
+    input.files = dataTransfer.files;
+  }
+});
+</script>
+
 {% endblock %}

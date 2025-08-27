@@ -14,6 +14,7 @@
   <link href="{{ url_for('static', filename='assets/vendor/boxicons/css/boxicons.min.css') }}" rel="stylesheet">
   <link href="{{ url_for('static', filename='assets/css/style.css') }}" rel="stylesheet">
   <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
 
 </head>
 
@@ -123,35 +124,103 @@
       </a>
     </li>
 
-    <li class="nav-item">
-      <a class="nav-link {% if request.path.startswith('/admin/denuncias') %}active{% endif %}" href="{{ url_for('ver_denuncias') }}">
-        <i class="bi bi-exclamation-diamond fs-4"></i><span>Ver Denúncias</span>
+    {% if can_denuncias %}
+<li class="nav-item">
+  <a class="nav-link {% if request.path.startswith('/admin/denuncias') %}active{% endif %}" href="{{ url_for('ver_denuncias') }}">
+    <i class="bi bi-exclamation-diamond fs-4"></i><span>Ver Denúncias</span>
+  </a>
+</li>
+{% endif %}
+
+{% if can_reclamacoes %}
+<li class="nav-item">
+  <a class="nav-link {% if request.path.startswith('/admin/reclamacoes') %}active{% endif %}" href="{{ url_for('ver_reclamacoes') }}">
+    <i class="bi bi-chat-square-dots fs-4"></i><span>Ver Reclamações</span>
+  </a>
+</li>
+{% endif %}
+
+{% if can_denuncias or can_reclamacoes %}
+<li class="nav-item">
+  <a class="nav-link {% if request.path.startswith('/admin/mensagens') %}active{% endif %}" href="{{ url_for('ver_mensagens') }}">
+    <i class="bi bi-chat-dots fs-4"></i><span>Mensagens</span>
+  </a>
+</li>
+{% endif %}
+
+{# Relatórios submenu #}
+{% set rel_open = request.path.startswith('/admin/relatorios') %}
+<li class="nav-item">
+  <a class="nav-link {% if rel_open %}{% else %}collapsed{% endif %}" data-bs-target="#relatorios-nav" data-bs-toggle="collapse" href="#">
+    <i class="bi bi-file-earmark-text fs-4"></i><span>Relatórios</span><i class="bi bi-chevron-down ms-auto"></i>
+  </a>
+  <ul id="relatorios-nav" class="nav-content collapse {% if rel_open %}show{% endif %}" data-bs-parent="#sidebar-nav">
+
+    {% if can_denuncias %}
+    <li>
+      <a href="{{ url_for('relatorio_denuncias') }}" class="{% if request.path.startswith('/admin/relatorios/denuncias') %}active{% endif %}">
+        <i class="bi bi-exclamation-diamond fs-4"></i><span>Relatório de Denúncias</span>
+      </a>
+    </li>
+    {% endif %}
+
+    {% if can_reclamacoes %}
+    <li>
+      <a href="{{ url_for('relatorio_reclamacoes') }}" class="{% if request.path.startswith('/admin/relatorios/reclamacoes') %}active{% endif %}">
+        <i class="bi bi-chat-dots fs-4"></i><span>Relatório de Reclamações</span>
+      </a>
+    </li>
+    {% endif %}
+
+    {% if is_admin %}
+    <li>
+      <a href="{{ url_for('relatorio_geral') }}" class="{% if request.path.startswith('/admin/relatorios/geral') %}active{% endif %}">
+        <i class="bi bi-bar-chart fs-4"></i><span>Relatório Geral</span>
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</li>
+
+
+
+
+    {# --- Definições (Perfil + Utilizadores) --- #}
+{% set defs_open = request.path.startswith('/admin/perfil')
+                  or request.path.startswith('/admin/usuarios')
+                  or request.path.startswith('/admin/definicoes') %}
+
+<li class="nav-item">
+  <a class="nav-link {% if defs_open %}{% else %}collapsed{% endif %}"
+     data-bs-target="#definicoes-nav" data-bs-toggle="collapse" href="#">
+    <i class="bi bi-gear fs-4 {% if defs_open %}text-primary{% endif %}"></i>
+    <span>Definições</span>
+    <i class="bi bi-chevron-down ms-auto"></i>
+  </a>
+
+  <ul id="definicoes-nav"
+      class="nav-content collapse {% if defs_open %}show{% endif %}"
+      data-bs-parent="#sidebar-nav">
+
+    <li>
+      <a href="{{ url_for('perfil') }}"
+         class="{% if request.path.startswith('/admin/perfil') %}active{% endif %}">
+        <i class="bi bi-person-circle fs-5 {% if request.path.startswith('/admin/perfil') %}text-primary{% endif %}"></i>
+        <span>Perfil</span>
       </a>
     </li>
 
-    <li class="nav-item">
-      <a class="nav-link {% if request.path.startswith('/admin/reclamacoes') %}active{% endif %}" href="#">
-        <i class="bi bi-chat-square-dots fs-4"></i><span>Ver Reclamações</span>
+    {% if session.get('perfil') in ['admin_geral','admin'] %}
+    <li>
+      <a href="{{ url_for('usuarios_listar') }}"
+         class="{% if request.path.startswith('/admin/usuarios') %}active{% endif %}">
+        <i class="bi bi-people fs-5 {% if request.path.startswith('/admin/usuarios') %}text-primary{% endif %}"></i>
+        <span>Utilizadores</span>
       </a>
     </li>
-
-    <li class="nav-item">
-      <a class="nav-link {% if request.path.startswith('/admin/mensagens') %}active{% endif %}" href="#">
-        <i class="bi bi-chat-dots fs-4"></i><span>Mensagens</span>
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a class="nav-link {% if request.path.startswith('/admin/relatorios') %}active{% endif %}" href="#">
-        <i class="bi bi-bar-chart fs-4"></i><span>Relatórios</span>
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a class="nav-link {% if request.path.startswith('/admin/definicoes') %}active{% endif %}" href="#">
-        <i class="bi bi-gear fs-4"></i><span>Definições</span>
-      </a>
-    </li>
+    {% endif %}
+  </ul>
+</li>
     
   </ul>
 </aside>
@@ -195,6 +264,11 @@
   });
 </script>
 
+<!-- Bootstrap JS (bundle) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+<script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 
 </body>
 </html>

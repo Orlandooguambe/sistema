@@ -1,0 +1,241 @@
+{% extends "admin/index.html" %}
+{% block title %}{% endblock %}
+
+{% block content %}
+<section class="section container-fluid">
+  <div class="pagetitle">
+    <h1>Relatório de Denúncias</h1>
+  </div>
+
+ <!-- Filtros -->
+<div class="card mb-3">
+  <div class="card-body py-3 px-4">
+    <form method="GET" class="row g-3">
+
+      <!-- Coluna 1: Mês / Estado -->
+      <div class="col-12 col-md-3">
+        <div class="mb-2">
+          <label class="form-label mb-1  fw-bold">Mês (Data de Submissão)</label>
+          <input type="month" class="form-control form-control-sm" name="mes"
+                 value="{{ request.args.get('mes','') }}">
+        </div>
+        <div>
+          <label class="form-label mb-1  fw-bold">Estado</label>
+          <select class="form-select form-select-sm" name="estado">
+            <option value="">Todos</option>
+            <option value="pendente"   {{ 'selected' if request.args.get('estado')=='pendente' else '' }}>Pendente</option>
+            <option value="em_analise" {{ 'selected' if request.args.get('estado')=='em_analise' else '' }}>Em análise</option>
+            <option value="concluida"  {{ 'selected' if request.args.get('estado')=='concluida' else '' }}>Concluída</option>
+            <option value="arquivada"  {{ 'selected' if request.args.get('estado')=='arquivada' else '' }}>Arquivada</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Coluna 2: Data inicial / Delegação -->
+      <div class="col-12 col-md-3">
+        <div class="mb-2">
+          <label class="form-label mb-1  fw-bold">Data inicial</label>
+          <input type="date" class="form-control form-control-sm" name="data_inicio"
+                 value="{{ request.args.get('data_inicio','') }}">
+        </div>
+        <div>
+          <label class="form-label mb-1  fw-bold">Delegação</label>
+          <select id="delegacao" name="delegacao" class="form-select form-select-sm">
+            <option value="">Todas</option>
+            <option value="sede"    {{ 'selected' if request.args.get('delegacao')=='sede' else '' }}>Sede</option>
+            <option value="txumene" {{ 'selected' if request.args.get('delegacao')=='txumene' else '' }}>Txumene</option>
+            <option value="beira"   {{ 'selected' if request.args.get('delegacao')=='beira' else '' }}>Beira</option>
+            <option value="tete"    {{ 'selected' if request.args.get('delegacao')=='tete' else '' }}>Tete</option>
+            <option value="nacala"  {{ 'selected' if request.args.get('delegacao')=='nacala' else '' }}>Nacala</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Coluna 3: Data final / Tipo -->
+      <div class="col-12 col-md-3">
+        <div class="mb-2">
+          <label class="form-label mb-1  fw-bold">Data final</label>
+          <input type="date" class="form-control form-control-sm" name="data_fim"
+                 value="{{ request.args.get('data_fim','') }}">
+        </div>
+        <div>
+          <label class="form-label mb-1  fw-bold">Tipo de Denúncia</label>
+          <select class="form-select form-select-sm" name="tipo">
+            <option value="">Todos</option>
+            <option value="corrupcao"     {{ 'selected' if request.args.get('tipo')=='corrupcao' else '' }}>Corrupção</option>
+            <option value="fraude"        {{ 'selected' if request.args.get('tipo')=='fraude' else '' }}>Fraude</option>
+            <option value="uso_abusivo"   {{ 'selected' if request.args.get('tipo')=='uso_abusivo' else '' }}>Uso abusivo de recursos</option>
+            <option value="quebra_sigilo" {{ 'selected' if request.args.get('tipo')=='quebra_sigilo' else '' }}>Quebra de sigilo</option>
+            <option value="assedio"       {{ 'selected' if request.args.get('tipo')=='assedio' else '' }}>Assédio</option>
+            <option value="racismo"       {{ 'selected' if request.args.get('tipo')=='racismo' else '' }}>Racismo</option>
+            <option value="discriminacao" {{ 'selected' if request.args.get('tipo')=='discriminacao' else '' }}>Discriminação</option>
+            <option value="outros"        {{ 'selected' if request.args.get('tipo')=='outros' else '' }}>Outros</option>
+          </select>
+        </div>
+      </div>
+
+     <!-- Coluna 4: Botões (centrados verticalmente) -->
+<div class="col-12 col-md-3 d-flex align-items-center justify-content-md-end">
+  <div class="d-flex gap-2 w-100 justify-content-md-end justify-content-center">
+    <button class="btn btn-sm btn-primary" type="submit" title="Aplicar filtros">
+      <i class="bi bi-funnel"></i> Filtrar
+    </button>
+    <a href="{{ url_for('relatorio_denuncias') }}" class="btn btn-sm btn-outline-secondary" title="Limpar filtros">
+      <i class="bi bi-x-circle"></i> Limpar
+    </a>
+  </div>
+</div>
+
+
+    </form>
+  </div>
+</div>
+
+
+  <!-- Tabela -->
+<div class="card">
+<div class="card-body py-3 px-4">
+ <div class="d-flex align-items-center justify-content-between flex-wrap">
+  <h5 class="fw-bold mb-3 mt-2">Resultados</h5>
+
+  <div class="d-flex align-items-center gap-3 ms-auto flex-wrap">
+    <!-- Show X entries -->
+    <div id="dt-length-holder" class="mb-2"></div>
+
+    <!-- Search -->
+    <div id="dt-filter-holder" class="mb-2"></div>
+
+    <!-- PDF -->
+    <a class="btn btn-danger"
+       href="{{ url_for('relatorio_denuncias_pdf', **request.args) }}"
+       target="_blank" rel="noopener noreferrer" title="Gerar PDF (servidor)">
+      <i class="bi bi-file-earmark-pdf"></i> PDF
+    </a>
+
+    <!-- Imprimir -->
+    <button class="btn btn-sm btn-outline-secondary" type="button" onclick="window.print()" title="Imprimir página">
+      <i class="bi bi-printer"></i> Imprimir
+    </button>
+
+    <!-- DataTables buttons -->
+    <div id="dt-buttons-holder" class="mb-2"></div>
+  </div>
+</div>
+
+
+      <table id="tabela-rel-denuncias" class="table table-striped table-sm w-100">
+        <thead style="background-color:#004080;color:#fff;">
+          <tr>
+            <th>#</th>
+            <th>Código</th>
+            <th>Tipo</th>
+            <th>Data de Submissão</th>
+            <th>Data de Ocorrência</th>
+            <th>Estado</th>
+            <th>Delegação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in denuncias %}
+          <tr>
+            <td></td> <!-- Aqui fica vazio, o DataTables vai preencher -->
+            <td>{{ '*' * (d.codigo_acomp|length - 3) }}{{ d.codigo_acomp[-3:] }}</td>
+            <td>{{ d.tipo|replace('_',' ')|title }}</td>
+            <td>{{ d.data_submissao[:10] if d.data_submissao }}</td>
+            <td>{{ d.data_ocorrencia[:10] if d.data_ocorrencia }}</td>
+            <td>
+              <span class="badge
+                {% if d.estado == 'pendente' %}bg-dark
+                {% elif d.estado == 'em_analise' %}bg-warning
+                {% elif d.estado == 'concluida' %}bg-info
+                {% elif d.estado == 'arquivada' %}bg-secondary
+                {% else %}bg-secondary{% endif %}">
+                {{ (d.estado or 'pendente')|replace('_',' ')|title }}
+              </span>
+            </td>
+            <td>{{ d.delegacao or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- DataTables + Buttons CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
+
+<!-- jQuery (se ainda não existir no layout base) -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- DataTables core + Bootstrap 5 -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<!-- Buttons + dependências -->
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+
+<script>
+  $(function () {
+    const dt = $('#tabela-rel-denuncias').DataTable({
+      pageLength: 5,
+      lengthMenu: [[5,10,25,50,100,-1],[5,10,25,50,100,"Todos"]],
+      dom: 'lBfrtip',
+      language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-PT.json" },
+      // torna a coluna "#" (índice 0) não ordenável nem pesquisável
+      columnDefs: [
+        { targets: 0, orderable: false, searchable: false }
+      ],
+      // (opcional) define uma ordenação inicial; aqui pela 3ª coluna (Data de Submissão)
+      // ajusta se quiseres outro default, ex.: [[3, 'desc']]
+      order: [[1, 'asc']],
+      buttons: [
+        { extend:'excelHtml5', text:'<i class="bi bi-file-earmark-excel"></i> Excel', title:'Relatório de Denúncias', exportOptions:{columns:':visible'} },
+        { extend:'pdfHtml5',   text:'<i class="bi bi-file-earmark-pdf"></i> PDF',   title:'Relatório de Denúncias', orientation:'landscape', pageSize:'A4',
+          exportOptions:{columns:':visible'}, customize: function(doc){ doc.styles.tableHeader.alignment='left'; doc.content[1].margin=[0,10,0,0]; } },
+        { extend:'print',      text:'<i class="bi bi-printer"></i> Imprimir',       title:'Relatório de Denúncias', exportOptions:{columns:':visible'} }
+      ],
+      initComplete: function() {
+        // Botões
+        this.api().buttons().container().appendTo('#dt-buttons-holder');
+
+        // Move o "Show X entries" para o holder e estiliza
+        const $length = $('#tabela-rel-denuncias_length');
+        $length.appendTo('#dt-length-holder');
+        $length.find('select').addClass('form-select form-select-sm').css('width','auto');
+        $length.find('label').addClass('mb-0 d-flex align-items-center gap-2');
+
+        // Move o "Search" para o holder e estiliza
+        const $filter = $('#tabela-rel-denuncias_filter');
+        $filter.appendTo('#dt-filter-holder');
+        $filter.find('input').addClass('form-control form-control-sm').attr('placeholder','Pesquisar...');
+        $filter.find('label').addClass('mb-0 d-flex align-items-center gap-2');
+
+        // Remove margens extras pra alinhar na mesma linha
+        $length.add($filter).css('margin', 0);
+      }
+    });
+
+    // -------- NUMERAÇÃO (#) --------
+    // Numeração CONTÍNUA entre páginas:
+    function renumerar() {
+      const info = dt.page.info();
+      dt.column(0, { search: 'applied', order: 'applied', page: 'current' })
+        .nodes()
+        .each(function (cell, i) {
+          cell.innerHTML = info.start + i + 1;
+        });
+    }
+    dt.on('order.dt search.dt draw.dt', renumerar);
+    renumerar(); // primeira vez
+  });
+</script>
+
+{% endblock %}

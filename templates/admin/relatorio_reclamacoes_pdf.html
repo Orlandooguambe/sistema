@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <title>Relatório de Reclamações</title>
+  <style>
+    @page { size: A4 landscape; margin: 16mm 14mm; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #222; }
+    h1 { font-size: 18px; margin: 0 0 6px 0; }
+    .muted { color: #666; font-size: 10px; }
+    .logo   { height: 150px; margin-bottom: 10px; }
+    .filters { margin: 6px 0 10px 0; font-size: 10px; }
+    .kpis { margin: 8px 0 12px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip { border-radius: 16px; padding: 6px 10px; display: inline-block; font-size: 10px; border: 1px solid #ddd; }
+    .chip .t { color:#666; margin-right:4px; }
+    .chip.total { background:#eef4ff; border-color:#b9d0ff; }
+    .chip.pendente { background:#efefef; }
+    .chip.em_analise { background:#fff4cf; }
+    .chip.concluida { background:#dff6fd; }
+    .chip.arquivada { background:#ececec; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ddd; padding: 6px 8px; }
+    th { background: #004080; color: #fff; text-align: left; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+    .bg-dark { background:#343a40; color:#fff; }
+    .bg-warning { background:#ffc107; }
+    .bg-info { background:#0dcaf0; }
+    .bg-secondary { background:#6c757d; color:#fff; }
+    .code { font-family: "Courier New", monospace; }
+  </style>
+</head>
+<body>
+
+  <!-- Cabeçalho centralizado -->
+  <div style="text-align:center; margin-bottom:20px;">
+    {% if logo_src %}
+      <img src="{{ logo_src }}" class="logo">
+    {% endif %}
+    <h1 style="font-size:22px; margin:0;">Relatório de Reclamações</h1>
+    <div class="muted" style="margin-top:4px;">Gerado em {{ gerado_em }}</div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filters">
+    <strong>Filtros:</strong>
+    {% set parts = [] %}
+    {% if filtros.mes %}{% set _ = parts.append('Mês: ' ~ filtros.mes) %}{% endif %}
+    {% if filtros.data_inicio %}{% set _ = parts.append('De: ' ~ filtros.data_inicio) %}{% endif %}
+    {% if filtros.data_fim %}{% set _ = parts.append('Até: ' ~ filtros.data_fim) %}{% endif %}
+    {% if filtros.tipo %}{% set _ = parts.append('Tipo: ' ~ filtros.tipo|replace('_',' ')|title) %}{% endif %}
+    {% if filtros.estado %}{% set _ = parts.append('Estado: ' ~ filtros.estado|replace('_',' ')|title) %}{% endif %}
+    {% if filtros.delegacao %}{% set _ = parts.append('Delegação: ' ~ filtros.delegacao|title) %}{% endif %}
+    {{ parts|join(' | ') if parts else 'Sem filtros' }}
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpis">
+    <div class="chip total"><span class="t">Total</span><strong>{{ kpis.total }}</strong></div>
+    <div class="chip pendente"><span class="t">Pendentes</span><strong>{{ kpis.pendentes }}</strong></div>
+    <div class="chip em_analise"><span class="t">Em análise</span><strong>{{ kpis.em_analise }}</strong></div>
+    <div class="chip concluida"><span class="t">Concluídas</span><strong>{{ kpis.concluidas }}</strong></div>
+    <div class="chip arquivada"><span class="t">Arquivadas</span><strong>{{ kpis.arquivadas }}</strong></div>
+  </div>
+
+  <!-- Tabela -->
+  <table>
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Tipo</th>
+        <th>Data de Submissão</th>
+        <th>Data de Ocorrência</th>
+        <th>Estado</th>
+        <th>Delegação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reclamacoes %}
+      {% set est = (r.estado or 'pendente') %}
+      <tr>
+        <td class="code">{{ '*' * (r.codigo_acomp|length - 3) }}{{ r.codigo_acomp[-3:] }}</td>
+        <td>{{ r.tipo|replace('_',' ')|title }}</td>
+        <td>{{ r.data_submissao[:10] if r.data_submissao }}</td>
+        <td>{{ r.data_ocorrencia[:10] if r.data_ocorrencia }}</td>
+        <td>
+          <span class="badge
+            {% if est == 'pendente' %}bg-dark
+            {% elif est == 'em_analise' %}bg-warning
+            {% elif est == 'concluida' %}bg-info
+            {% else %}bg-secondary{% endif %}">
+            {{ est|replace('_',' ')|title }}
+          </span>
+        </td>
+        <td>{{ r.delegacao or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
