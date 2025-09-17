@@ -72,15 +72,13 @@
 </style>
 
 <section class="section container-fluid">
-  <div class="pagetitle">
-    <h1>Detalhes da Denúncia</h1>
-    <nav>
-      <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{{ url_for('ver_denuncias') }}?tipo={{ request.args.get('tipo', '') }}&estado={{ request.args.get('estado', '') }}&data={{ request.args.get('data', '') }}">Ver Denúncias</a></li>
-        <li class="breadcrumb-item active">Detalhes da Denúncia</li>
-      </ol>
-    </nav>
+  <div class="pagetitle d-flex align-items-center">
+    <button type="button" class="btn btn-link p-0 me-2" onclick="voltarParaLista()" style="text-decoration: none;">
+      <i class="ri-arrow-left-fill" style="font-size: 2.5rem;"></i>
+    </button>
+    <h1 class="mb-0">Detalhes da Denúncia</h1>
   </div>
+</section>
 
   <!-- Card com dados -->
   <div class="card mb-3">
@@ -236,4 +234,17 @@ document.addEventListener("DOMContentLoaded", function() {
   chatBox.scrollTop = chatBox.scrollHeight;
 });
 </script>
+
+<script>
+  function voltarParaLista() {
+    const params = new URLSearchParams(window.location.search);
+    const url = new URL("{{ url_for('ver_denuncias') }}", window.location.origin);
+    ["tipo","estado","mes","data_inicio","data_fim","page","len","rowId"].forEach(k=>{
+      const v = params.get(k);
+      if (v) url.searchParams.set(k, v);
+    });
+    window.location.href = url.toString();
+  }
+</script>
+
 {% endblock %}

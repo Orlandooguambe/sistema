@@ -15,6 +15,9 @@ import pdfkit, os, pytz
 from pathlib import Path
 from flask import Response
 from functools import wraps
+from calendar import monthrange
+import plotly.graph_objs as go
+import plotly.io as pio
 
 
 # >>> ADD: roles/helpers/decorador
@@ -234,6 +237,172 @@ def inject_perms():
         "can_reclamacoes": can_reclamacoes(),
     }
 # <<< END ADD
+@app.context_processor
+def inject_current_user():
+    u = None
+    try:
+        if session.get("user_id"):
+            u = get_db().execute(
+                "SELECT id, nome, email, perfil, cargo, foto FROM usuarios WHERE id = ?",
+                (session["user_id"],)
+            ).fetchone()
+    except Exception:
+        u = None
+    # Devolve um objeto (row) ou None. Usaremos 'current_user' no template.
+    return {"current_user": u}
+
+
+@app.context_processor
+def inject_header_inboxes():
+    """
+    Disponibiliza no template:
+      - notif_count: nº total de notificações recentes (denúncias + reclamações)
+      - notif_items: lista (máx 5) com {origem, codigo, titulo, secund, data}
+      - msg_count: nº de conversas com última mensagem do cidadão (entrante)
+      - msg_items: lista (máx 5) com {origem, codigo, texto, delegacao, data}
+    Regras:
+      - Só inclui denúncias se can_denuncias()
+      - Só inclui reclamações se can_reclamacoes() e tipo permitido
+      - "Recentes": estado pendente OU submetidas nas últimas 24h
+      - Mensagens: últimas por conversa em que o remetente foi 'cidadao'
+    """
+    try:
+        if "user_id" not in session:
+            return dict(notif_count=0, notif_items=[], msg_count=0, msg_items=[])
+
+        db = get_db()
+
+        # -------- NOTIFICAÇÕES (denúncias + reclamações) --------
+        items = []
+
+        # Denúncias (se o utilizador pode ver)
+        if can_denuncias():
+            rows = db.execute("""
+                SELECT 
+                  d.codigo_acomp AS codigo,
+                  COALESCE(dg.nome, d.delegacao_id) AS delegacao,
+                  d.data_submissao AS data
+                FROM denuncias d
+                LEFT JOIN delegacoes dg
+                  ON dg.id = d.delegacao_id
+                  OR LOWER(CAST(d.delegacao_id AS TEXT)) = LOWER(dg.nome)
+                WHERE 
+                  (d.estado IS NULL OR d.estado='pendente' 
+                   OR datetime(d.data_submissao) >= datetime('now','-1 day'))
+                ORDER BY d.data_submissao DESC
+                LIMIT 10
+            """).fetchall()
+            for r in rows:
+                items.append({
+                    "origem": "denuncia",
+                    "codigo": r["codigo"],
+                    "titulo": "Nova denúncia",
+                    "secund": r["delegacao"] or "—",
+                    "data": r["data"],
+                })
+
+        # Reclamações (se o utilizador pode ver + filtro de tipos)
+        if can_reclamacoes():
+            tipos_allowed = get_allowed_rec_tipos_for_current_user()  # None=admin (sem filtro)
+            base = """
+                SELECT 
+                  r.codigo_acomp AS codigo,
+                  r.tipo,
+                  COALESCE(dg.nome, r.delegacao_id) AS delegacao,
+                  r.data_submissao AS data
+                FROM reclamacoes r
+                LEFT JOIN delegacoes dg
+                  ON dg.id = r.delegacao_id
+                  OR LOWER(CAST(r.delegacao_id AS TEXT)) = LOWER(dg.nome)
+                WHERE 
+                  (r.estado IS NULL OR r.estado='pendente'
+                   OR datetime(r.data_submissao) >= datetime('now','-1 day'))
+            """
+            params = []
+            if tipos_allowed is not None:
+                if not tipos_allowed:
+                    pass  # sem permissões → nada a fazer
+                else:
+                    placeholders = ",".join(["?"] * len(tipos_allowed))
+                    base += f" AND r.tipo IN ({placeholders})"
+                    params.extend(tipos_allowed)
+
+            recs = db.execute(base + " ORDER BY r.data_submissao DESC LIMIT 10", params).fetchall()
+            for r in recs:
+                items.append({
+                    "origem": "reclamacao",
+                    "codigo": r["codigo"],
+                    "titulo": "Nova reclamação",
+                    "secund": r["delegacao"] or "—",
+                    "data": r["data"],
+                })
+
+        # Ordena por data desc e limita a 5 para o dropdown
+        items.sort(key=lambda x: x["data"], reverse=True)
+        notif_items = items[:5]
+        notif_count = len(items)
+
+        # -------- MENSAGENS (última mensagem do cidadão em cada conversa) --------
+        conv = db.execute("""
+            WITH ult AS (
+              SELECT m.*
+              FROM mensagens m
+              JOIN (
+                SELECT codigo_acomp, MAX(id) AS max_id
+                FROM mensagens
+                GROUP BY codigo_acomp
+              ) u ON u.max_id = m.id
+            )
+            SELECT 
+              ult.codigo_acomp AS codigo,
+              ult.conteudo     AS texto,
+              ult.data_envio   AS data,
+              CASE WHEN d.id IS NOT NULL THEN 'denuncia' ELSE 'reclamacao' END AS origem,
+              COALESCE(dg.nome, COALESCE(dg2.nome, r.delegacao_id)) AS delegacao,
+              r.tipo AS tipo_rec
+            FROM ult
+            LEFT JOIN denuncias d ON d.codigo_acomp = ult.codigo_acomp
+            LEFT JOIN delegacoes dg
+              ON dg.id = d.delegacao_id 
+              OR LOWER(CAST(d.delegacao_id AS TEXT)) = LOWER(dg.nome)
+            LEFT JOIN reclamacoes r ON r.codigo_acomp = ult.codigo_acomp
+            LEFT JOIN delegacoes dg2
+              ON dg2.id = r.delegacao_id 
+              OR LOWER(CAST(r.delegacao_id AS TEXT)) = LOWER(dg2.nome)
+            WHERE ult.remetente = 'cidadao'
+            ORDER BY ult.data_envio DESC
+        """).fetchall()
+
+        msg_items = []
+        for c in conv:
+            # guards de permissão
+            if c["origem"] == "denuncia" and not can_denuncias():
+                continue
+            if c["origem"] == "reclamacao":
+                if not can_reclamacoes():
+                    continue
+                tipos_allowed = get_allowed_rec_tipos_for_current_user()
+                if tipos_allowed is not None and c["tipo_rec"] not in tipos_allowed:
+                    continue
+            msg_items.append({
+                "origem": c["origem"],
+                "codigo": c["codigo"],
+                "texto":  c["texto"],
+                "delegacao": c["delegacao"] or "—",
+                "data": c["data"],
+            })
+
+        msg_count = len(msg_items)
+        msg_items = msg_items[:5]
+
+        return dict(
+            notif_count=notif_count,
+            notif_items=notif_items,
+            msg_count=msg_count,
+            msg_items=msg_items
+        )
+    except Exception:
+        return dict(notif_count=0, notif_items=[], msg_count=0, msg_items=[])
 
 
 @app.route("/denuncia", methods=["GET", "POST"])
@@ -399,10 +568,13 @@ def responder():
     conteudo = request.form.get("mensagem")
 
     if codigo and conteudo:
+        tz = pytz.timezone("Africa/Maputo")
+        agora = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+
         db.execute("""
             INSERT INTO mensagens (codigo_acomp, conteudo, remetente, data_envio)
-            VALUES (?, ?, 'cidadao', datetime('now'))
-        """, (codigo, conteudo))
+            VALUES (?, ?, 'cidadao', ?)
+        """, (codigo, conteudo, agora))
         db.commit()
 
     return redirect(url_for("acompanhamento_detalhes", codigo=codigo))
@@ -453,61 +625,345 @@ def logout():
     return redirect(url_for("login"))
 
 
+
+
+
+
 @app.route("/painel")
 @login_required
 def painel():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    return render_template("admin/index.html")
+    db = get_db()
 
+    # -------- filtros (GET) --------
+    tz = pytz.timezone("Africa/Maputo")
+    now = datetime.now(tz)
+
+    try:
+        ano = int(request.args.get("ano", now.year))
+    except:
+        ano = now.year
+
+    mes = request.args.get("mes", f"{now.month:02d}")  # 'all' ou '01'..'12'
+    visao_anual = (mes == "all")
+
+    # rótulos de meses e dias
+    meses_labels = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
+    dias_labels = []
+    if not visao_anual:
+        _, ndias = monthrange(ano, int(mes))
+        dias_labels = [f"{d:02d}" for d in range(1, ndias+1)]
+
+    # datas início/fim
+    if visao_anual:
+        data_ini = f"{ano}-01-01"
+        data_fim = f"{ano}-12-31"
+    else:
+        data_ini = f"{ano}-{mes}-01"
+        _, ndias = monthrange(ano, int(mes))
+        data_fim = f"{ano}-{mes}-{ndias:02d}"
+
+    periodo_label = f"{ano}" if visao_anual else f"{mes}/{ano}"
+
+    # ---------- Permissões ----------
+    see_den = can_denuncias()
+    see_rec = can_reclamacoes()
+    tipos_allowed = get_allowed_rec_tipos_for_current_user() if see_rec else None
+
+    # where extra para reclamações (por tipo)
+    rec_where = ""
+    rec_params = []
+    if see_rec and tipos_allowed is not None:
+        if not tipos_allowed:
+            # sem permissões => zera tudo já aqui
+            rec_kpis = {"total":0,"pendentes":0,"em_analise":0,"concluidas":0,"arquivadas":0}
+            rec_diaria = []
+            rec_mensal = [0]*12
+        else:
+            placeholders = ",".join(["?"] * len(tipos_allowed))
+            rec_where = f" AND reclamacoes.tipo IN ({placeholders})"
+            rec_params = tipos_allowed
+
+    # ---------- helpers ----------
+    def kpis_periodo(tabela: str, extra_where: str = "", params=None):
+        params = params or []
+        sql = f"""
+            SELECT 
+              COUNT(*) AS total,
+              SUM(CASE WHEN estado='pendente'   THEN 1 ELSE 0 END) AS pendentes,
+              SUM(CASE WHEN estado='em_analise' THEN 1 ELSE 0 END) AS em_analise,
+              SUM(CASE WHEN estado='concluida'  THEN 1 ELSE 0 END) AS concluidas,
+              SUM(CASE WHEN estado='arquivada'  THEN 1 ELSE 0 END) AS arquivadas
+            FROM {tabela}
+            WHERE date(data_submissao) BETWEEN date(?) AND date(?) {extra_where}
+        """
+        row = db.execute(sql, [data_ini, data_fim] + params).fetchone()
+        def _z(v): return int(v or 0)
+        return {
+            "total": _z(row["total"]),
+            "pendentes": _z(row["pendentes"]),
+            "em_analise": _z(row["em_analise"]),
+            "concluidas": _z(row["concluidas"]),
+            "arquivadas": _z(row["arquivadas"]),
+        }
+
+    def serie_diaria(tabela: str, extra_where: str = "", params=None):
+        params = params or []
+        if visao_anual:
+            return []
+        sql = f"""
+            SELECT strftime('%d', data_submissao) AS dia, COUNT(*) AS qt
+            FROM {tabela}
+            WHERE date(data_submissao) BETWEEN date(?) AND date(?) {extra_where}
+            GROUP BY strftime('%Y-%m-%d', data_submissao)
+            ORDER BY 1
+        """
+        rows = db.execute(sql, [data_ini, data_fim] + params).fetchall()
+        mapa = {r["dia"]: int(r["qt"]) for r in rows}
+        return [mapa.get(d, 0) for d in dias_labels]
+
+    def serie_mensal(tabela: str, extra_where: str = "", params=None):
+        params = params or []
+        if not visao_anual:
+            return []
+        sql = f"""
+            SELECT strftime('%m', data_submissao) AS mm, COUNT(*) AS qt
+            FROM {tabela}
+            WHERE date(data_submissao) BETWEEN date(?) AND date(?) {extra_where}
+            GROUP BY strftime('%Y-%m', data_submissao)
+            ORDER BY 1
+        """
+        rows = db.execute(sql, [data_ini, data_fim] + params).fetchall()
+        mapa = {r["mm"]: int(r["qt"]) for r in rows}
+        return [mapa.get(f"{i:02d}", 0) for i in range(1,13)]
+
+    def serie_semana(tabela: str, extra_where: str = "", params=None):
+        """Contagem por dia da semana (1..6,0) -> Seg..Dom"""
+        params = params or []
+        sql = f"""
+            SELECT strftime('%w', data_submissao) AS wd, COUNT(*) AS qt
+            FROM {tabela}
+            WHERE date(data_submissao) BETWEEN date(?) AND date(?) {extra_where}
+            GROUP BY strftime('%Y-%m-%d', data_submissao), strftime('%w', data_submissao)
+        """
+        rows = db.execute(sql, [data_ini, data_fim] + params).fetchall()
+        # sqlite: 0=Dom .. 6=Sáb; queremos ordem Seg(1)..Sáb(6),Dom(0)
+        soma = {"0":0,"1":0,"2":0,"3":0,"4":0,"5":0,"6":0}
+        for r in rows:
+            k = r["wd"] or "0"
+            soma[k] += int(r["qt"] or 0)
+        ordem = ["1","2","3","4","5","6","0"]
+        return [soma[o] for o in ordem]
+
+    def top_delegacoes_rows(tabela: str, extra_where: str = "", params=None):
+        params = params or []
+        sql = f"""
+          SELECT COALESCE(dg.nome, {tabela}.delegacao_id) AS delegacao, COUNT(*) AS qt
+          FROM {tabela}
+          LEFT JOIN delegacoes dg
+            ON dg.id = {tabela}.delegacao_id
+            OR LOWER(CAST({tabela}.delegacao_id AS TEXT)) = LOWER(dg.nome)
+          WHERE date({tabela}.data_submissao) BETWEEN date(?) AND date(?) {extra_where}
+          GROUP BY delegacao
+          ORDER BY qt DESC
+          LIMIT 10
+        """
+        return db.execute(sql, [data_ini, data_fim] + params).fetchall()
+
+    def combinar_tops(den_rows, rec_rows):
+        tot = {}
+        for r in (den_rows or []):
+            nm = r["delegacao"] or "—"
+            tot[nm] = tot.get(nm, 0) + int(r["qt"] or 0)
+        for r in (rec_rows or []):
+            nm = r["delegacao"] or "—"
+            tot[nm] = tot.get(nm, 0) + int(r["qt"] or 0)
+        pares = sorted(tot.items(), key=lambda x: x[1], reverse=True)[:10]
+        labels = [p[0] for p in pares]
+        values = [p[1] for p in pares]
+        return labels, values
+
+    # ---------- DENÚNCIAS ----------
+    den_kpis = den_diaria = den_mensal = den_semana = den_top_rows = None
+    if see_den:
+        den_kpis = kpis_periodo("denuncias")
+        den_diaria = serie_diaria("denuncias")
+        den_mensal = serie_mensal("denuncias")
+        den_semana = serie_semana("denuncias")
+        den_top_rows = top_delegacoes_rows("denuncias")
+
+    # ---------- RECLAMAÇÕES ----------
+    rec_kpis = rec_diaria = rec_mensal = rec_semana = rec_top_rows = None
+    if see_rec:
+        if tipos_allowed is not None and not tipos_allowed:
+            rec_semana = [0,0,0,0,0,0,0]
+        else:
+            rec_kpis = kpis_periodo("reclamacoes", rec_where, rec_params)
+            rec_diaria = serie_diaria("reclamacoes", rec_where, rec_params)
+            rec_mensal = serie_mensal("reclamacoes", rec_where, rec_params)
+            rec_semana = serie_semana("reclamacoes", rec_where, rec_params)
+            rec_top_rows = top_delegacoes_rows("reclamacoes", rec_where, rec_params)
+
+    # ---------- COMBINADO ----------
+    combinado = None
+    if see_den and see_rec and (den_kpis or rec_kpis):
+        combinado = {
+            "total": (den_kpis["total"] if den_kpis else 0) + (rec_kpis["total"] if rec_kpis else 0),
+            "pendentes": (den_kpis["pendentes"] if den_kpis else 0) + (rec_kpis["pendentes"] if rec_kpis else 0),
+            "em_analise": (den_kpis["em_analise"] if den_kpis else 0) + (rec_kpis["em_analise"] if rec_kpis else 0),
+            "concluidas": (den_kpis["concluidas"] if den_kpis else 0) + (rec_kpis["concluidas"] if rec_kpis else 0),
+            "arquivadas": (den_kpis["arquivadas"] if den_kpis else 0) + (rec_kpis["arquivadas"] if rec_kpis else 0),
+        }
+
+    # ---------- Distribuição por estado (donut) ----------
+    estados_totais = [
+        (den_kpis["pendentes"] if den_kpis else 0) + (rec_kpis["pendentes"] if rec_kpis else 0),
+        (den_kpis["em_analise"] if den_kpis else 0) + (rec_kpis["em_analise"] if rec_kpis else 0),
+        (den_kpis["concluidas"] if den_kpis else 0) + (rec_kpis["concluidas"] if rec_kpis else 0),
+        (den_kpis["arquivadas"] if den_kpis else 0) + (rec_kpis["arquivadas"] if rec_kpis else 0),
+    ]
+
+    # ---------- Semana & Top Delegações (para os novos gráficos) ----------
+    semana_labels = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"]
+    den_sem = den_semana or [0]*7
+    rec_sem = rec_semana or [0]*7
+    semana_total = [ (den_sem[i] if see_den else 0) + (rec_sem[i] if see_rec else 0) for i in range(7) ]
+
+    top_labels, top_values = combinar_tops(den_top_rows, rec_top_rows)
+
+    # Cabeçalho (se ainda não tens, deixa vazio)
+    notif_items = []
+    msg_items = []
+    notif_count = 0
+    msg_count = 0
+
+    return render_template(
+        "admin/dashboard.html",
+        # filtros/labels
+        ano=ano, mes=mes, visao_anual=visao_anual, periodo_label=periodo_label,
+        meses_labels=meses_labels, dias_labels=dias_labels,
+
+        # kpis + séries
+        den_kpis=den_kpis, den_diaria=den_diaria or [], den_mensal=den_mensal or [],
+        rec_kpis=rec_kpis, rec_diaria=rec_diaria or [], rec_mensal=rec_mensal or [],
+        combinado=combinado,
+        estados_totais=estados_totais,
+
+        # novos gráficos
+        semana_labels=semana_labels, semana_total=semana_total,
+        top_labels=top_labels, top_values=top_values,
+
+        # permissões
+        see_den=see_den, see_rec=see_rec,
+
+        # header
+        notif_items=notif_items, msg_items=msg_items,
+        notif_count=notif_count, msg_count=msg_count
+    )
 
 @app.route("/admin/denuncias")
 @require_roles(ROLES_DEN)
 def ver_denuncias():
     db = get_db()
-    tipo = request.args.get("tipo")
-    estado = request.args.get("estado")
-    data = request.args.get("data")
 
-    query = "SELECT * FROM denuncias WHERE 1=1"
-    params = []
+    # --- parâmetros de filtro (novos + antigos) ---
+    tipo         = request.args.get("tipo") or None
+    estado       = request.args.get("estado") or None
+    mes          = request.args.get("mes") or None          # YYYY-MM
+    data_inicio  = request.args.get("data_inicio") or None  # YYYY-MM-DD
+    data_fim     = request.args.get("data_fim") or None     # YYYY-MM-DD
 
+    # --- WHERE comum (sem "estado") para usar nos KPIs ---
+    where_parts_no_estado = ["1=1"]
+    params_no_estado = []
+
+    # Mês (só se NÃO houver intervalo De/Até)
+    if mes and not (data_inicio or data_fim):
+        try:
+            from datetime import datetime, timedelta
+            dt_ini = datetime.strptime(mes + "-01", "%Y-%m-%d").date()
+            # último dia do mês
+            if dt_ini.month == 12:
+                dt_fim = dt_ini.replace(year=dt_ini.year + 1, month=1, day=1) - timedelta(days=1)
+            else:
+                dt_fim = dt_ini.replace(month=dt_ini.month + 1, day=1) - timedelta(days=1)
+            where_parts_no_estado.append("date(data_submissao) BETWEEN date(?) AND date(?)")
+            params_no_estado.extend([dt_ini.isoformat(), dt_fim.isoformat()])
+        except ValueError:
+            pass
+
+    # Intervalo De/Até (sempre por data_submissao)
+    if data_inicio:
+        where_parts_no_estado.append("date(data_submissao) >= date(?)")
+        params_no_estado.append(data_inicio)
+    if data_fim:
+        where_parts_no_estado.append("date(data_submissao) <= date(?)")
+        params_no_estado.append(data_fim)
+
+    # Tipo
     if tipo:
-        query += " AND tipo = ?"
-        params.append(tipo)
+        where_parts_no_estado.append("tipo = ?")
+        params_no_estado.append(tipo)
 
-    # Lógica especial para 'pendente' (estado NULL ou vazio)
+    # Constrói WHERE base (sem estado)
+    where_no_estado = " AND ".join(where_parts_no_estado)
+
+    # --- WHERE com "estado" (para a listagem) ---
+    where_parts = where_parts_no_estado[:]
+    params = params_no_estado[:]
+
     if estado:
-       query += " AND estado = ?"
-       params.append(estado)
+        if estado == "pendente":
+            # trata pendente como pendente/NULL/vazio
+            where_parts.append("(estado = 'pendente' OR estado IS NULL OR estado = '')")
+        else:
+            where_parts.append("estado = ?")
+            params.append(estado)
 
-    elif estado:
-        query += " AND estado = ?"
-        params.append(estado)
+    where = " AND ".join(where_parts)
 
-    if data:
-        query += " AND date(data_submissao) = ?"
-        params.append(data)
+    # --- LISTA (respeita todos os filtros, inclusive estado) ---
+    sql_lista = f"SELECT * FROM denuncias WHERE {where} ORDER BY data_submissao DESC"
+    denuncias = db.execute(sql_lista, params).fetchall()
 
-    denuncias = db.execute(query + " ORDER BY data_submissao DESC", params).fetchall()
+    # --- KPIs (no conjunto filtrado, porém SEM filtrar por 'estado') ---
+    sql_kpis = f"""
+        SELECT 
+          COUNT(*) AS total,
+          SUM(CASE WHEN COALESCE(NULLIF(estado,''),'pendente')='pendente' THEN 1 ELSE 0 END) AS pendentes,
+          SUM(CASE WHEN estado='em_analise' THEN 1 ELSE 0 END) AS em_analise,
+          SUM(CASE WHEN estado='concluida'  THEN 1 ELSE 0 END) AS concluidas,
+          SUM(CASE WHEN estado='arquivada'  THEN 1 ELSE 0 END) AS arquivadas
+        FROM denuncias
+        WHERE {where_no_estado}
+    """
+    k = db.execute(sql_kpis, params_no_estado).fetchone()
+    def _z(v): return int(v or 0)
 
-    total = db.execute("SELECT COUNT(*) FROM denuncias").fetchone()[0]
-    pendentes = db.execute("SELECT COUNT(*) FROM denuncias WHERE estado = 'pendente'").fetchone()[0]
-    em_analise = db.execute("SELECT COUNT(*) FROM denuncias WHERE estado = 'em_analise'").fetchone()[0]
-    concluidas = db.execute("SELECT COUNT(*) FROM denuncias WHERE estado = 'concluida'").fetchone()[0]
-    arquivadas = db.execute("SELECT COUNT(*) FROM denuncias WHERE estado = 'arquivada'").fetchone()[0]
+    total        = _z(k["total"])
+    pendentes    = _z(k["pendentes"])
+    em_analise   = _z(k["em_analise"])
+    concluidas   = _z(k["concluidas"])
+    arquivadas   = _z(k["arquivadas"])
 
-    return render_template("admin/ver_denuncias.html",
-                           denuncias=denuncias,
-                           total_denuncias=total,
-                           pendentes=pendentes,
-                           em_analise=em_analise,
-                           concluidas=concluidas,
-                           arquivadas=arquivadas,
-                           tipo=tipo,
-                           estado=estado,
-                           data=data)
+    return render_template(
+        "admin/ver_denuncias.html",
+        denuncias=denuncias,
+
+        # KPIs (já filtrados)
+        total_denuncias=total,
+        pendentes=pendentes,
+        em_analise=em_analise,
+        concluidas=concluidas,
+        arquivadas=arquivadas,
+
+        # devolve filtros para o template manter seleção
+        tipo=tipo, estado=estado, mes=mes,
+        data_inicio=data_inicio, data_fim=data_fim
+    )
+
 
 
 

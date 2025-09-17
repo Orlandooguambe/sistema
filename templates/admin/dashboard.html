@@ -1,0 +1,260 @@
+{% extends "admin/index.html" %}
+{% block title %}Dashboard — Sistema Confidencia{% endblock %}
+
+{% block content %}
+
+<div class="pagetitle">
+  <h1>Dashboard</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('painel') }}">Home</a></li>
+      <li class="breadcrumb-item active">Dashboard</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section dashboard">
+  <div class="row">
+    <!-- Coluna Esquerda -->
+    <div class="col-lg-8">
+      <div class="row">
+
+        {% if see_den %}
+        <div class="col-xxl-4 col-md-6">
+          <div class="card info-card sales-card">
+            <div class="card-body">
+              <h5 class="card-title">Denúncias <span class="text-muted">| {{ 'Ano' if visao_anual else 'Mês' }}</span></h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-shield-exclamation"></i>
+                </div>
+                <div class="ps-3">
+                  <h6 class="mb-1">{{ den_kpis.total if den_kpis else 0 }}</h6>
+                  <div class="small text-muted">
+                    Pend.: <b>{{ den_kpis.pendentes if den_kpis else 0 }}</b> ·
+                    Análise: <b>{{ den_kpis.em_analise if den_kpis else 0 }}</b> ·
+                    Concl.: <b>{{ den_kpis.concluidas if den_kpis else 0 }}</b>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if see_rec %}
+        <div class="col-xxl-4 col-md-6">
+          <div class="card info-card revenue-card">
+            <div class="card-body">
+              <h5 class="card-title">Reclamações <span class="text-muted">| {{ 'Ano' if visao_anual else 'Mês' }}</span></h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-chat-dots"></i>
+                </div>
+                <div class="ps-3">
+                  <h6 class="mb-1">{{ rec_kpis.total if rec_kpis else 0 }}</h6>
+                  <div class="small text-muted">
+                    Pend.: <b>{{ rec_kpis.pendentes if rec_kpis else 0 }}</b> ·
+                    Análise: <b>{{ rec_kpis.em_analise if rec_kpis else 0 }}</b> ·
+                    Concl.: <b>{{ rec_kpis.concluidas if rec_kpis else 0 }}</b>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if see_den and see_rec and combinado %}
+        <div class="col-xxl-4 col-xl-12">
+          <div class="card info-card customers-card">
+            <div class="card-body">
+              <h5 class="card-title">Geral <span class="text-muted">| {{ 'Ano' if visao_anual else 'Mês' }}</span></h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-bar-chart"></i>
+                </div>
+                <div class="ps-3">
+                  <h6 class="mb-1">{{ combinado.total }}</h6>
+                  <div class="small text-muted">
+                    Pend.: <b>{{ combinado.pendentes }}</b> ·
+                    Análise: <b>{{ combinado.em_analise }}</b> ·
+                    Concl.: <b>{{ combinado.concluidas }}</b> ·
+                    Arq.: <b>{{ combinado.arquivadas }}</b>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Gráfico principal + filtro Ano/Mês -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                  {{ 'Evolução mensal (Ano)' if visao_anual else 'Evolução diária (Mês)' }}
+                  <span class="text-muted">| {{ periodo_label }}</span>
+                </h5>
+                <form class="d-flex gap-2" method="get" action="{{ url_for('painel') }}">
+                  <select name="ano" class="form-select form-select-sm" style="width:auto">
+                    {% for y in range(ano-4, ano+1) %}
+                      <option value="{{ y }}" {% if y==ano %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                  </select>
+                  <select name="mes" class="form-select form-select-sm" style="width:auto">
+                    <option value="all" {% if visao_anual %}selected{% endif %}>Todos os meses</option>
+                    {% for i in range(1,13) %}
+                      {% set mm = "%02d"|format(i) %}
+                      <option value="{{ mm }}" {% if not visao_anual and mes==mm %}selected{% endif %}>{{ meses_labels[i-1] }}</option>
+                    {% endfor %}
+                  </select>
+                  <button class="btn btn-sm btn-primary">
+                    <i class="bi bi-filter"></i> Aplicar
+                  </button>
+                </form>
+              </div>
+
+              <div id="reportsChart" style="height: 360px;" class="mt-4"></div>
+              
+            </div>
+          </div>
+        </div>
+    
+      </div>
+    </div>
+
+    <!-- Coluna Direita -->
+    <div class="col-lg-4">
+
+      <!-- Donut -->
+      <div class="card">
+        <div class="card-body pb-0">
+          <h5 class="card-title">Distribuição por estado <span class="text-muted">| {{ 'Ano' if visao_anual else 'Mês' }}</span></h5>
+          <div id="trafficChart" style="min-height: 350px;" class="echart"></div>
+        </div>
+      </div>
+
+      <!-- Entradas por dia da semana -->
+      <div class="card">
+        <div class="card-body pb-0">
+          <h5 class="card-title">Entradas por dia da semana <span class="text-muted">| {{ periodo_label }}</span></h5>
+          <div id="weekChart" style="min-height: 300px;" class="echart"></div>
+        </div>
+      </div>
+
+      <!-- Top delegações (barra) -->
+      
+
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const visaoAnual = {{ 'true' if visao_anual else 'false' }};
+  const canDen     = {{ 'true' if see_den else 'false' }};
+  const canRec     = {{ 'true' if see_rec else 'false' }};
+
+  // Dados do gráfico principal
+  const labelsMeses = {{ meses_labels|tojson }};
+  const labelsDias  = {{ (dias_labels or [])|tojson }};
+  const denMes      = {{ (den_mensal or [])|tojson }};
+  const recMes      = {{ (rec_mensal or [])|tojson }};
+  const denDia      = {{ (den_diaria or [])|tojson }};
+  const recDia      = {{ (rec_diaria or [])|tojson }};
+
+  // ---------- Gráfico principal (ApexCharts) ----------
+  const series = [];
+  if (canDen) series.push({ name: 'Denúncias',   data: visaoAnual ? denMes : denDia });
+  if (canRec) series.push({ name: 'Reclamações', data: visaoAnual ? recMes : recDia });
+
+  const el = document.querySelector('#reportsChart');
+  if (el && series.length) {
+    new ApexCharts(el, {
+      chart: { type: visaoAnual ? 'bar' : 'area', height: 360, toolbar: { show: false } },
+      series: series,
+      xaxis: { categories: visaoAnual ? labelsMeses : labelsDias },
+      dataLabels: { enabled: false },
+      stroke: { curve: 'smooth', width: 2 },
+      fill: visaoAnual 
+        ? { opacity: 0.85 } 
+        : { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0.4, stops: [0, 90, 100] } },
+      markers: { size: visaoAnual ? 0 : 3 }
+    }).render();
+  }
+
+  // ---------- Donut (ECharts) ----------
+  const donut = document.querySelector('#trafficChart');
+  if (donut) {
+    const valores = {{ (estados_totais or [0,0,0,0])|tojson }};
+    echarts.init(donut).setOption({
+      tooltip: { trigger: 'item' },
+      legend: { top: '5%', left: 'center' },
+      series: [{
+        name: 'Estados',
+        type: 'pie',
+        radius: ['45%','70%'],
+        avoidLabelOverlap: false,
+        label: { show: false, position: 'center' },
+        emphasis: { label: { show: true, fontSize: 18, fontWeight: 'bold' } },
+        labelLine: { show: false },
+        data: [
+          { name: 'Pendente',  value: valores[0] || 0 },
+          { name: 'Em análise',value: valores[1] || 0 },
+          { name: 'Concluída', value: valores[2] || 0 },
+          { name: 'Arquivada', value: valores[3] || 0 }
+        ]
+      }]
+    });
+  }
+
+  // ---------- Entradas por dia da semana (ECharts) ----------
+  const weekEl = document.querySelector('#weekChart');
+  if (weekEl) {
+    const weekLabels = {{ (semana_labels or [])|tojson }};
+    const weekValues = {{ (semana_total  or [])|tojson }};
+    echarts.init(weekEl).setOption({
+      grid: { left: 40, right: 20, top: 20, bottom: 30 },
+      tooltip: { trigger: 'axis' },
+      xAxis: { type: 'category', data: weekLabels, axisTick: { alignWithLabel: true }},
+      yAxis: { type: 'value' },
+      series: [{
+        type: 'bar',
+        data: weekValues,
+        barMaxWidth: 28,
+        emphasis: { focus: 'series' },
+        label: { show: true, position: 'top' }
+      }]
+    });
+  }
+
+  // ---------- Top delegações (ECharts) ----------
+  const topEl = document.querySelector('#topDelegChart');
+  if (topEl) {
+    const topLabels = {{ (top_labels or [])|tojson }};
+    const topValues = {{ (top_values or [])|tojson }};
+    echarts.init(topEl).setOption({
+      grid: { left: 120, right: 20, top: 20, bottom: 20 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      xAxis: { type: 'value' },
+      yAxis: { type: 'category', data: topLabels },
+      series: [{
+        type: 'bar',
+        data: topValues,
+        barMaxWidth: 28,
+        label: { show: true, position: 'right' }
+      }]
+    });
+  }
+});
+</script>
+{% endblock %}

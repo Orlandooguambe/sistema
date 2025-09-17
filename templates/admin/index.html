@@ -33,82 +33,136 @@
     <nav class="header-nav ms-auto">
       <ul class="d-flex align-items-center">
 
-        <!-- Notificações -->
-        <li class="nav-item dropdown">
-          <a class="nav-link nav-icon" href="#" data-bs-toggle="dropdown">
-            <i class="bi bi-bell"></i>
-            <span class="badge bg-primary badge-number">4</span>
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow notifications">
-            <li class="dropdown-header">
-              Tens 4 novas notificações
-              <a href="#"><span class="badge rounded-pill bg-primary p-2 ms-2">Ver todas</span></a>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-            <!-- Itens de notificação (exemplo) -->
-            <li class="notification-item">
-              <i class="bi bi-check-circle text-success"></i>
-              <div>
-                <h4>Nova denúncia recebida</h4>
-                <p>Delegação Central</p>
-                <p>há 2 horas</p>
-              </div>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-            <li class="dropdown-footer"><a href="#">Ver todas as notificações</a></li>
-          </ul>
-        </li>
+        <!-- Notificações 
+  <!--<li class="nav-item dropdown">
+  <a class="nav-link nav-icon" href="#" data-bs-toggle="dropdown">
+    <i class="bi bi-bell"></i>
+    {% if notif_count and notif_count > 0 %}
+      <span class="badge bg-primary badge-number">{{ notif_count }}</span>
+    {% endif %}
+  </a>
 
-        <!-- Mensagens -->
-        <li class="nav-item dropdown">
-          <a class="nav-link nav-icon" href="#" data-bs-toggle="dropdown">
-            <i class="bi bi-chat-left-text"></i>
-            <span class="badge bg-success badge-number">3</span>
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow messages">
-            <li class="dropdown-header">Tens 3 novas mensagens</li>
-            <li><hr class="dropdown-divider"></li>
-            <!-- Itens de mensagens (exemplo) -->
-            <li class="message-item">
-              <a href="#">
-                <img src="{{ url_for('static', filename='assets/img/messages-1.jpg') }}" alt="" class="rounded-circle">
-                <div>
-                  <h4>Admin Central</h4>
-                  <p>Nova actualização disponível</p>
-                  <p>há 4 horas</p>
-                </div>
-              </a>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-            <li class="dropdown-footer"><a href="#">Ver todas as mensagens</a></li>
-          </ul>
-        </li>
+  <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow notifications">
+    <li class="dropdown-header">
+      {% if notif_count and notif_count > 0 %}
+        Tens {{ notif_count }} novas notificações
+      {% else %}
+        Sem novas notificações
+      {% endif %}
+      <!-- Opcional: link para uma página de listagem -->
+      <!-- <a href="{{ url_for('ver_denuncias') }}"><span class="badge rounded-pill bg-primary p-2 ms-2">Ver todas</span></a> -->
+   <!-- </li>
+    <li><hr class="dropdown-divider"></li>
 
+    {% for n in notif_items %}
+      <li class="notification-item">
+        {% if n.origem == 'denuncia' %}
+          <i class="bi bi-exclamation-octagon text-danger"></i>
+        {% else %}
+          <i class="bi bi-flag text-warning"></i>
+        {% endif %}
+        <div>
+          <h4>{{ n.titulo }}</h4>
+          <p>{{ n.secund }}</p>
+          <p class="small text-muted">{{ n.data }}</p>
+        </div>
+      </li>
+      <li><hr class="dropdown-divider"></li>
+    {% endfor %}
+
+    <li class="dropdown-footer">
+      <!-- Ajusta para a rota que preferires (ex.: geral) -->
+      <!--<a href="{{ url_for('relatorio_geral') }}">Ver todas as notificações</a>
+    </li>
+  </ul>
+</li>
+
+<!-- Mensagens 
+<li class="nav-item dropdown">
+  <a class="nav-link nav-icon" href="#" data-bs-toggle="dropdown">
+    <i class="bi bi-chat-left-text"></i>
+    {% if msg_count and msg_count > 0 %}
+      <span class="badge bg-success badge-number">{{ msg_count }}</span>
+    {% endif %}
+  </a>
+
+  <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow messages">
+    <li class="dropdown-header">
+      {% if msg_count and msg_count > 0 %}
+        Tens {{ msg_count }} novas mensagens
+      {% else %}
+        Sem novas mensagens
+      {% endif %}
+    </li>
+    <li><hr class="dropdown-divider"></li>
+
+    {% for m in msg_items %}
+      <li class="message-item">
+        <a href="{{ url_for('ver_mensagens', codigo=m.codigo) }}">
+          <div class="me-2">
+            {% if m.origem == 'denuncia' %}
+              <i class="bi bi-shield-exclamation"></i>
+            {% else %}
+              <i class="bi bi-flag"></i>
+            {% endif %}
+          </div>
+          <div>
+            <h4>{{ 'Denúncia' if m.origem=='denuncia' else 'Reclamação' }} — {{ m.delegacao }}</h4>
+            <p class="mb-1">{{ m.texto|truncate(80, True) }}</p>
+            <p class="small text-muted">{{ m.data }}</p>
+          </div>
+        </a>
+      </li>
+      <li><hr class="dropdown-divider"></li>
+    {% endfor %}
+
+    <li class="dropdown-footer">
+      <a href="{{ url_for('ver_mensagens') }}">Ver todas as mensagens</a>
+    </li>
+  </ul>
+</li>
+      -->
         <!-- Perfil -->
-        <li class="nav-item dropdown pe-3">
-          <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
-            <img src="{{ url_for('static', filename='assets/img/profile-img.jpg') }}" alt="Profile" class="rounded-circle">
-            <span class="d-none d-md-block dropdown-toggle ps-2">Admin</span>
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
-            <li class="dropdown-header">
-              <h6>Administrador Geral</h6>
-              <span>Sistema</span>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-            <li>
-              <a class="dropdown-item d-flex align-items-center" href="#">
-                <i class="bi bi-person"></i> <span>Meu Perfil</span>
-              </a>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-            <li>
-              <a class="dropdown-item d-flex align-items-center"href="{{ url_for('logout') }}">
-                <i class="bi bi-box-arrow-right"></i> <span>Sair</span>
-              </a>
-            </li>
-          </ul>
-        </li>
+       <!-- Perfil -->
+<li class="nav-item dropdown pe-3">
+  <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
+    {% set foto = (current_user.foto if current_user and current_user.foto else 'img/profile-default.png') %}
+    <img src="{{ url_for('static', filename=foto) }}" alt="Profile" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;">
+    <span class="d-none d-md-block dropdown-toggle ps-2">
+      {{ (current_user.nome if current_user else session.get('nome')) or 'Utilizador' }}
+    </span>
+  </a>
+
+  <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
+    <li class="dropdown-header">
+      <h6>{{ (current_user.nome if current_user else session.get('nome')) or 'Utilizador' }}</h6>
+      <span>
+        {% if current_user %}
+          {{ current_user.cargo or current_user.perfil or '—' }}
+        {% else %}
+          Sistema
+        {% endif %}
+      </span>
+    </li>
+
+    <li><hr class="dropdown-divider"></li>
+
+    <li>
+      <a class="dropdown-item d-flex align-items-center" href="{{ url_for('perfil') }}">
+        <i class="bi bi-person"></i> <span>Meu Perfil</span>
+      </a>
+    </li>
+
+    <li><hr class="dropdown-divider"></li>
+
+    <li>
+      <a class="dropdown-item d-flex align-items-center" href="{{ url_for('logout') }}">
+        <i class="bi bi-box-arrow-right"></i> <span>Sair</span>
+      </a>
+    </li>
+  </ul>
+</li>
+
       </ul>
     </nav>
   </header>
@@ -119,7 +173,7 @@
   <ul class="sidebar-nav" id="sidebar-nav">
     
     <li class="nav-item">
-      <a class="nav-link {% if request.path == '/painel' %}active{% endif %}" href="">
+      <a class="nav-link {% if request.path == '/painel' %}active{% endif %}" href="{{ url_for('painel') }}">
         <i class="bi bi-grid fs-4"></i><span>Dashboard</span>
       </a>
     </li>
@@ -252,7 +306,9 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
 <script>
+
   $(document).ready(function () {
     $('.datatable').DataTable({
       "pageLength": 5,
@@ -264,11 +320,7 @@
   });
 </script>
 
-<!-- Bootstrap JS (bundle) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-        crossorigin="anonymous"></script>
-<script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 
+{% block extra_scripts %}{% endblock %}
 </body>
 </html>

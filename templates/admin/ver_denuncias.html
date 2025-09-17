@@ -61,59 +61,91 @@
  </div>
   
 
-  <!-- Filtros -->
-<div class="card mb-3">
+<!-- Filtros -->
+<div class="card mb-3 border-primary shadow-sm">
+  <div class="py-2 d-flex align-items-center">
+  
+  </div>
+
   <div class="card-body py-3 px-4">
-    <form method="GET" class="row g-2">
+    <form method="GET" action="{{ url_for('ver_denuncias') }}" class="row g-3">
 
-      <!-- Tipo -->
-      <div class="col-md-3">
+      <!-- Linha 1: Tipo / Estado / Mês -->
+      <div class="col-lg-4">
+        <label class="form-label small fw-semibold mb-1">
+          <i class="bi bi-tag"></i> Tipo de Denúncia
+        </label>
         <select class="form-select form-select-sm" name="tipo">
-          <option value="">Tipo de Denúncia</option>
-          <option value="corrupcao" {% if request.args.get('tipo') == 'corrupcao' %}selected{% endif %}>Corrupção</option>
-          <option value="assedio" {% if request.args.get('tipo') == 'assedio' %}selected{% endif %}>Assédio</option>
-          <option value="corrupcao" {% if request.args.get('tipo') == 'corrupcao' %}selected{% endif %}>Corrupção</option>
-          <option value="fraude" {% if request.args.get('tipo') == 'fraude' %}selected{% endif %}>Fraude</option>
-          <option value="uso_abusivo" {% if request.args.get('tipo') == 'uso_abusivo' %}selected{% endif %}>Uso abusivo de recursos da empresa</option>
-          <option value="quebra_sigilo" {% if request.args.get('tipo') == 'quebra_sigilo' %}selected{% endif %}>Quebra de sigilo profissional</option>
-          <option value="assedio" {% if request.args.get('tipo') == 'assedio' %}selected{% endif %}>Assédio moral ou sexual</option>
-          <option value="racismo" {% if request.args.get('tipo') == 'racismo' %}selected{% endif %}>Racismo</option>
-          <option value="discriminacao" {% if request.args.get('tipo') == 'discriminacao' %}selected{% endif %}>Discriminação</option>
-          <option value="outros" {% if request.args.get('tipo') == 'outros' %}selected{% endif %}>Outros</option>
+          <option value="" {{ '' == (tipo or request.args.get('tipo') or '') and 'selected' or '' }}>Todos</option>
+          <option value="corrupcao"     {{ 'corrupcao'     == (tipo or request.args.get('tipo')) and 'selected' or '' }}>Corrupção</option>
+          <option value="assedio"       {{ 'assedio'       == (tipo or request.args.get('tipo')) and 'selected' or '' }}>Assédio moral/sexual</option>
+          <option value="fraude"        {{ 'fraude'        == (tipo or request.args.get('tipo')) and 'selected' or '' }}>Fraude</option>
+          <option value="uso_abusivo"   {{ 'uso_abusivo'   == (tipo or request.args.get('tipo')) and 'selected' or '' }}>Uso abusivo de recursos</option>
+          <option value="quebra_sigilo" {{ 'quebra_sigilo' == (tipo or request.args.get('tipo')) and 'selected' or '' }}>Quebra de sigilo</option>
+          <option value="racismo"       {{ 'racismo'       == (tipo or request.args.get('tipo')) and 'selected' or '' }}>Racismo</option>
+          <option value="discriminacao" {{ 'discriminacao' == (tipo or request.args.get('tipo')) and 'selected' or '' }}>Discriminação</option>
+          <option value="outros"        {{ 'outros'        == (tipo or request.args.get('tipo')) and 'selected' or '' }}>Outros</option>
         </select>
       </div>
 
-      <!-- Estado -->
-      <div class="col-md-3">
+      <div class="col-lg-4">
+        <label class="form-label small fw-semibold mb-1">
+          <i class="bi bi-flag"></i> Estado
+        </label>
         <select class="form-select form-select-sm" name="estado">
-          <option value="">Estado</option>
-          <option value="pendente" {% if request.args.get('estado') == 'pendente' %}selected{% endif %}>Pendente</option>
-          <option value="em_analise" {% if request.args.get('estado') == 'em_analise' %}selected{% endif %}>Em análise</option>
-          <option value="concluida" {% if request.args.get('estado') == 'concluida' %}selected{% endif %}>Concluída</option>
-          <option value="arquivada" {% if request.args.get('estado') == 'arquivada' %}selected{% endif %}>Arquivada</option>
+          <option value="" {{ '' == (estado or request.args.get('estado') or '') and 'selected' or '' }}>Todos</option>
+          <option value="pendente"   {{ 'pendente'   == (estado or request.args.get('estado')) and 'selected' or '' }}>Pendente</option>
+          <option value="em_analise" {{ 'em_analise' == (estado or request.args.get('estado')) and 'selected' or '' }}>Em análise</option>
+          <option value="concluida"  {{ 'concluida'  == (estado or request.args.get('estado')) and 'selected' or '' }}>Concluída</option>
+          <option value="arquivada"  {{ 'arquivada'  == (estado or request.args.get('estado')) and 'selected' or '' }}>Arquivada</option>
         </select>
       </div>
 
-      <!-- Data -->
-      <div class="col-md-3">
-        <input type="date" class="form-control form-control-sm" name="data" value="{{ request.args.get('data') }}">
+      <div class="col-lg-4">
+        <label class="form-label small fw-semibold mb-1">
+          <i class="bi bi-calendar3"></i> Mês (YYYY-MM)
+        </label>
+        <input type="month"
+               class="form-control form-control-sm"
+               name="mes"
+               value="{{ mes or request.args.get('mes') or '' }}">
       </div>
 
-   <!-- Botão de aplicar filtros -->
-<div class="col-md-1 d-flex align-items-center">
-  <button class="btn btn-sm btn-outline-primary w-100" type="submit" title="Filtrar">
-    <i class="bi bi-funnel-fill"></i>
-  </button>
-</div>
+      <!-- Linha 2: Intervalo de datas (De / Até) + Ações -->
+      <div class="col-lg-4">
+        <label class="form-label small fw-semibold mb-1">
+          <i class="bi bi-calendar-event"></i> De
+        </label>
+        <input type="date"
+               class="form-control form-control-sm"
+               name="data_inicio"
+               value="{{ data_inicio or request.args.get('data_inicio') or '' }}">
+      </div>
 
-<!-- Botão de limpar filtros com X vermelho no mesmo estilo -->
-<div class="col-md-1 d-flex align-items-center">
-  <a href="{{ url_for('ver_denuncias') }}" class="btn btn-sm btn-outline-primary w-100" title="Limpar filtros">
-    <i class="bi bi-x-lg text-danger"></i>
-  </a>
-</div>
+      <div class="col-lg-4">
+        <label class="form-label small fw-semibold mb-1">
+          <i class="bi bi-calendar-event"></i> Até
+        </label>
+        <input type="date"
+               class="form-control form-control-sm"
+               name="data_fim"
+               value="{{ data_fim or request.args.get('data_fim') or '' }}">
+      </div>
 
-      
+      <div class="col-lg-4 d-flex align-items-end">
+        <div class="w-100 d-flex gap-2">
+          <button class="btn btn-primary btn-sm w-50" type="submit" title="Aplicar filtros">
+            <i class="bi bi-funnel-fill me-1"></i> Aplicar
+          </button>
+          <a href="{{ url_for('ver_denuncias') }}"
+             class="btn btn-outline-secondary btn-sm w-50" title="Limpar filtros">
+            <i class="bi bi-x-lg me-1 text-danger"></i> Limpar
+          </a>
+        </div>
+      </div>
+
+     
+      </div>
     </form>
   </div>
 </div>
@@ -122,7 +154,8 @@
 <div class="card">
   <div class="card-body py-3 px-4">
 <h5 class="fw-bold mb-3 mt-2">Lista de Denúncias</h5>
-    <table id="tabela-denuncias" class="table table-striped table-sm datatable">
+   <table id="tabela-denuncias" class="table table-striped table-sm">
+
 
       <thead style="background-color: #004080; color: white;">
         <tr>
@@ -134,66 +167,177 @@
           <th class="text-center">Ações</th>
         </tr>
       </thead>
-      <tbody>
-        {% for d in denuncias %}
-        <tr>
-          <td>{{ loop.index }}</td>
-          <td>{{ '*' * (d.codigo_acomp|length - 3) }}{{ d.codigo_acomp[-3:] }}</td>
+    <tbody>
+{% for d in denuncias %}
+  <tr id="row-{{ d.id }}" data-id="{{ d.id }}">
+    <td>{{ loop.index }}</td>
+    <td>{{ '*' * (d.codigo_acomp|length - 3) }}{{ d.codigo_acomp[-3:] }}</td>
+    <td>{{ d.tipo }}</td>
+    <td>{{ d.data_submissao[:10] }}</td>
+    <td>
+      <span class="badge
+        {% if d.estado == 'pendente' %}bg-dark
+        {% elif d.estado == 'em_analise' %}bg-warning
+        {% elif d.estado == 'concluida' %}bg-info
+        {% elif d.estado == 'arquivada' %}bg-secondary
+        {% else %}bg-dark{% endif %}">
+        {% if not d.estado or d.estado == 'pendente' %}
+          <i class="bi bi-question-circle"></i> Pendente
+        {% elif d.estado == 'em_analise' %}
+          <i class="bi bi-hourglass-split"></i> Em análise
+        {% elif d.estado == 'concluida' %}
+          <i class="bi bi-clipboard-check"></i> Concluída
+        {% elif d.estado == 'arquivada' %}
+          <i class="bi bi-archive"></i> Arquivada
+        {% else %}
+          <i class="bi bi-question-circle"></i> Pendente
+        {% endif %}
+      </span>
+    </td>
+    <td class="text-center">
+      <a
+        href="{{ url_for('ver_detalhes_denuncia', id=d.id) }}?tipo={{ tipo }}&estado={{ estado }}&mes={{ mes }}&data_inicio={{ data_inicio }}&data_fim={{ data_fim }}"
+        class="btn btn-sm bg-primary text-white btn-ver-detalhes"
+        data-id="{{ d.id }}"
+        title="Ver detalhes">
+        <i class="bi bi-eye"></i>
+      </a>
+    </td>
+  </tr>
+{% endfor %}
+</tbody>
 
-          <td>{{ d.tipo }}</td>
-          <td>{{ d.data_submissao[:10] }}</td>
-          <td>
-            <span class="badge
-              {% if d.estado == 'pendente' %}bg-dark
-              {% elif d.estado == 'em_analise' %}bg-warning
-              {% elif d.estado == 'concluida' %}bg-info
-              {% elif d.estado == 'arquivada' %}bg-secondary
-              {% else %}bg-dark{% endif %}">
-            {% if not d.estado or d.estado == 'pendente' %}
-            <i class="bi bi-question-circle"></i> Pendente
-              {% elif d.estado == 'em_analise' %}
-                <i class="bi bi-hourglass-split"></i> Em análise
-              {% elif d.estado == 'concluida' %}
-                <i class="bi bi-clipboard-check"></i> Concluída
-              {% elif d.estado == 'arquivada' %}
-                <i class="bi bi-archive"></i> Arquivada
-              {% else %}
-                <i class="bi bi-question-circle"></i> Pendente
-              {% endif %}
-            </span>
-          </td>
-          <td class="text-center">
-            <a href="{{ url_for('ver_detalhes_denuncia', id=d.id) }}?tipo={{ tipo }}&estado={{ estado }}&data={{ data }}"
-              class="btn btn-sm bg-primary text-white btn-ver-detalhes"
-               title="Ver detalhes">
-             <i class="bi bi-eye"></i>
-           </a>
-
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
     </table>
   </div>
 </div>
 
 </section>
 
-
 <!-- DataTables -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 <script>
-  $(document).ready(function () {
-    $('#tabela-denuncias').DataTable({
+  const STATE_KEY   = "DEN_TABLE_STATE";
+  const FILTERS_KEY = "DEN_FILTERS";
+  const LAST_KEY    = "DEN_LAST_CLICK";
+
+  function save(k, v){ sessionStorage.setItem(k, JSON.stringify(v)); }
+  function load(k){ try{ return JSON.parse(sessionStorage.getItem(k) || "null"); }catch{ return null; } }
+
+  function getFilters() {
+    return {
+      tipo:        document.querySelector('[name="tipo"]')?.value || "",
+      estado:      document.querySelector('[name="estado"]')?.value || "",
+      mes:         document.querySelector('[name="mes"]')?.value || "",
+      data_inicio: document.querySelector('[name="data_inicio"]')?.value || "",
+      data_fim:    document.querySelector('[name="data_fim"]')?.value || ""
+    };
+  }
+  function setFilters(f) {
+    if (!f) return;
+    for (const [k,v] of Object.entries(f)) {
+      const el = document.querySelector(`[name="${k}"]`);
+      if (el) el.value = v ?? "";
+    }
+  }
+  function highlightRow(id){
+    if (!id) return;
+    const tr = document.getElementById(`row-${id}`);
+    if (!tr) return;
+    tr.classList.add("table-warning");
+    setTimeout(()=>tr.classList.remove("table-warning"), 3000);
+    tr.scrollIntoView({behavior: "smooth", block: "center"});
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // 0) Se algum script do template já inicializou, destrói antes de criar a nossa (evita tn/3)
+    if ($.fn.DataTable.isDataTable('#tabela-denuncias')) {
+      $('#tabela-denuncias').DataTable().clear().destroy();
+    }
+
+    // 1) Repõe filtros guardados (opcional, mas melhora UX)
+    const storedFilters = load(FILTERS_KEY);
+    if (storedFilters) setFilters(storedFilters);
+
+    // 2) Cria a DataTable (apenas uma vez)
+    const table = $('#tabela-denuncias').DataTable({
       pageLength: 5,
       lengthMenu: [[5, 10, 15, 25, 50, 100, -1], [5, 10, 15, 25, 50, 100, "Todos"]],
-      language: {
-        url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-PT.json"
+      language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-PT.json" },
+      deferRender: true,
+      stateSave: true,
+      stateDuration: 0, // sessão
+      stateSaveParams: function (settings, data) {
+        data._customFilters = getFilters();
+        save(STATE_KEY, {
+          page:  table.page(),
+          len:   table.page.len(),
+          order: table.order(),
+          search: table.search()
+        });
+        save(FILTERS_KEY, data._customFilters);
       },
-      deferRender: true
+      stateLoadParams: function (settings, data) {
+        if (data && data._customFilters) setFilters(data._customFilters);
+      }
     });
+
+    // 3) Aplicar page/len/rowId vindos da URL (volta do detalhe) com CAP ao nº de páginas
+    const params = new URLSearchParams(location.search);
+    const wantLen = params.get("len");
+    const wantPage = params.get("page");
+    const rowId = params.get("rowId");
+
+    if (wantLen) table.page.len(parseInt(wantLen,10));
+
+    table.one('draw', function(){
+      const info = table.page.info();
+      let p = parseInt(wantPage ?? info.page, 10);
+      if (isNaN(p) || p < 0) p = 0;
+      if (p >= info.pages) p = Math.max(info.pages - 1, 0);
+      if (p !== info.page) table.page(p).draw('page');
+
+      if (rowId) highlightRow(rowId);
+    });
+    table.draw(false);
+
+    // 4) Guardar estado e ir ao detalhe
+    $(document).on('click', '.btn-ver-detalhes', function (e) {
+      e.preventDefault();
+      const a  = this;
+      const id = a.getAttribute('data-id');
+
+      const st = {
+        page:  table.page(),
+        len:   table.page.len(),
+        order: table.order(),
+        search: table.search()
+      };
+      save(STATE_KEY, st);
+      save(FILTERS_KEY, getFilters());
+      save(LAST_KEY, { rowId: id });
+
+      const url = new URL(a.href, window.location.origin);
+      url.searchParams.set("page", st.page);
+      url.searchParams.set("len",  st.len);
+      url.searchParams.set("rowId", id);
+      window.location.href = url.toString();
+    });
+
+    // 5) Atualiza storage ao aplicar/limpar filtros
+    const form = document.querySelector('form[action*="ver_denuncias"]');
+    if (form) {
+      form.addEventListener('submit', function(){ save(FILTERS_KEY, getFilters()); });
+      const limpar = form.querySelector('a.btn.btn-outline-secondary');
+      if (limpar) {
+        limpar.addEventListener('click', function(){
+          sessionStorage.removeItem(FILTERS_KEY);
+          sessionStorage.removeItem(STATE_KEY);
+          sessionStorage.removeItem(LAST_KEY);
+        });
+      }
+    }
   });
 </script>
 
