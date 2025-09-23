@@ -2233,7 +2233,6 @@ def usuarios_editar(uid):
     )
 
 
-
 @app.route("/admin/usuarios/<int:uid>/ativar", methods=["POST"])
 @login_required
 @require_profiles(PERFIS["USUARIOS_ADMIN"])
